@@ -541,10 +541,22 @@ async def compare_channels(left: str, right: str):
     left_data = await get_channel_overview(left)
     right_data = await get_channel_overview(right)
     
+    # Calculate diffs for compare modal
+    left_metrics = left_data.get("metrics", {})
+    right_metrics = right_data.get("metrics", {})
+    
+    diffs = {
+        "utilityDiff": (left_metrics.get("utilityScore", 0) - right_metrics.get("utilityScore", 0)),
+        "growthDiff": (left_metrics.get("growth7", 0) - right_metrics.get("growth7", 0)),
+        "engagementDiff": (left_metrics.get("engagement", 0) - right_metrics.get("engagement", 0)),
+        "fraudDiff": (left_metrics.get("fraud", 0) - right_metrics.get("fraud", 0)),
+    }
+    
     return {
         "ok": True,
         "left": left_data,
         "right": right_data,
+        "diffs": diffs
     }
 
 @telegram_router.post("/channel/{username}/refresh")
