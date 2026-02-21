@@ -1136,12 +1136,14 @@ async def admin_lang_audit():
     GET /api/telegram-intel/admin/census/lang-audit
     """
     # Top by crypto score
-    top = await db.tg_channel_states.find(
-        {"stage": "QUALIFIED"}
-    ).project({
-        "username": 1, "lang": 1, "langConfidence": 1, 
-        "cryptoRelevanceScore": 1, "cryptoHits": 1, "participantsCount": 1
-    }).sort("cryptoRelevanceScore", -1).limit(50).to_list(50)
+    top_cursor = db.tg_channel_states.find(
+        {"stage": "QUALIFIED"},
+        {
+            "username": 1, "lang": 1, "langConfidence": 1, 
+            "cryptoRelevanceScore": 1, "cryptoHits": 1, "participantsCount": 1
+        }
+    ).sort("cryptoRelevanceScore", -1).limit(50)
+    top = await top_cursor.to_list(50)
     
     # Distribution
     dist = await db.tg_channel_states.aggregate([
