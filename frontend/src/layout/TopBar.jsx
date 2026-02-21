@@ -1,15 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Eye, Wallet, Search, X } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "../components/ui/tooltip";
-import UniversalSearch from '../components/UniversalSearch';
-import GlobalIndexingStatus from '../components/GlobalIndexingStatus';
-import NotificationBell from '../components/NotificationBell';
+import { Eye, Wallet, Search, X, Bell, Filter } from 'lucide-react';
 
 export default function TopBar() {
   const location = useLocation();
@@ -30,92 +21,74 @@ export default function TopBar() {
   };
 
   return (
-    <TooltipProvider>
-      <div className="bg-white border-b px-4 md:px-6 py-3 flex items-center justify-between" data-testid="topbar">
-        {/* Mobile: Search Icon | Desktop: Search Bar */}
-        {isMobile ? (
-          <div className="flex-1">
-            {searchOpen ? (
-              <div className="fixed inset-0 z-50 bg-white p-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <button 
-                    onClick={() => setSearchOpen(false)}
-                    className="p-2 rounded-lg hover:bg-gray-100"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                  <span className="font-medium">Search</span>
-                </div>
-                <UniversalSearch 
-                  onClose={() => setSearchOpen(false)}
-                  autoFocus={true}
-                />
-              </div>
-            ) : (
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                data-testid="mobile-search-btn"
-              >
-                <Search className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="flex-1 max-w-2xl">
-            {searchOpen ? (
-              <UniversalSearch 
-                onClose={() => setSearchOpen(false)}
-                autoFocus={true}
-              />
-            ) : (
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search tokens, wallets, entities..."
-                  onClick={() => setSearchOpen(true)}
-                  readOnly
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Right Section - Icons + Connect */}
-        <div className="flex items-center gap-2 md:gap-3">
-          {/* Global Indexing Status */}
-          <GlobalIndexingStatus />
-
-          {/* Watchlist Icon */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link 
-                to="/watchlist"
-                className={`p-2.5 rounded-full transition-colors ${
-                  isActive('/watchlist') 
-                    ? 'text-gray-900 bg-gray-100' 
-                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                <Eye className="w-5 h-5" />
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent className="bg-gray-900 text-white">
-              <p className="text-xs">Watchlist</p>
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Alerts - NotificationBell with dropdown */}
-          <NotificationBell />
-
-          {/* Connect Wallet Button - BLACK (original) */}
-          <button className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-full text-xs md:text-sm font-bold transition-all shadow-lg shadow-gray-900/20 hover:shadow-xl hover:shadow-gray-900/30 hover:scale-105 active:scale-95">
-            <Wallet className="w-4 h-4" />
-            <span className="hidden sm:inline">Connect</span>
-          </button>
+    <div className="bg-white border-b px-4 md:px-6 py-3 flex items-center justify-between" data-testid="topbar">
+      {/* Search Bar */}
+      <div className="flex-1 max-w-2xl">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search for a project, fund or person..."
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent text-sm"
+          />
         </div>
       </div>
-    </TooltipProvider>
+
+      {/* Stats */}
+      <div className="hidden md:flex items-center gap-6 mx-6">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 uppercase tracking-wide">Funds</span>
+          <span className="text-sm font-semibold text-gray-900">200</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 uppercase tracking-wide">Projects</span>
+          <span className="text-sm font-semibold text-gray-900">200</span>
+        </div>
+      </div>
+
+      {/* Right Section - Icons + Connect */}
+      <div className="flex items-center gap-2 md:gap-3">
+        {/* Social Icons */}
+        <div className="hidden lg:flex items-center gap-1">
+          {['twitter', 'discord', 'telegram', 'instagram', 'linkedin', 'youtube', 'tiktok'].map((social) => (
+            <button 
+              key={social}
+              className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            >
+              <img 
+                src={`https://cdn.simpleicons.org/${social}/888888`} 
+                alt={social}
+                className="w-4 h-4"
+                onError={(e) => e.target.style.display = 'none'}
+              />
+            </button>
+          ))}
+        </div>
+
+        {/* Ad Mode Button */}
+        <button className="hidden md:flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+          <Eye className="w-4 h-4" />
+          <span>Ad Mode</span>
+        </button>
+
+        {/* Filter Button */}
+        <button className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+          <Filter className="w-4 h-4" />
+          <span className="hidden sm:inline">Filter</span>
+        </button>
+
+        {/* Notifications */}
+        <button className="relative p-2.5 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors">
+          <Bell className="w-5 h-5" />
+          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+
+        {/* Connect Wallet Button */}
+        <button className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-full text-xs md:text-sm font-bold transition-all shadow-lg shadow-gray-900/20 hover:shadow-xl hover:shadow-gray-900/30 hover:scale-105 active:scale-95">
+          <Wallet className="w-4 h-4" />
+          <span className="hidden sm:inline">Connect</span>
+        </button>
+      </div>
+    </div>
   );
 }
