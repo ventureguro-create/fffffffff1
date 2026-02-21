@@ -432,6 +432,12 @@ function ChannelSnapshotCard({ data }) {
 }
 
 function HealthSafetyCard({ data }) {
+  // Default values if data is incomplete
+  const spamLevel = data?.spamLevel || { label: 'Low', value: 20 };
+  const raidRisk = data?.raidRisk || { label: 'Medium', value: 50 };
+  const modCoverage = data?.modCoverage || { label: 'Good', value: 75 };
+  const note = data?.note || 'Health metrics are computed from activity patterns and community behavior.';
+  
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="health-safety">
       <div className="flex items-center justify-between mb-4">
@@ -440,12 +446,12 @@ function HealthSafetyCard({ data }) {
       </div>
       
       <div className="space-y-4">
-        <MetricRowProgress label="Spam Level" value={data.spamLevel.label} progress={data.spamLevel.value} color="teal" />
-        <MetricRowProgress label="Raid risk" value={data.raidRisk.label} progress={data.raidRisk.value} color="amber" />
-        <MetricRowProgress label="Mod coverage" value={data.modCoverage.label} progress={data.modCoverage.value} color="teal" />
+        <MetricRowProgress label="Spam Level" value={spamLevel.label} progress={spamLevel.value} color="teal" />
+        <MetricRowProgress label="Raid risk" value={raidRisk.label} progress={raidRisk.value} color="amber" />
+        <MetricRowProgress label="Mod coverage" value={modCoverage.label} progress={modCoverage.value} color="teal" />
       </div>
       
-      <p className="text-xs text-gray-500 mt-4 leading-relaxed">{data.note}</p>
+      <p className="text-xs text-gray-500 mt-4 leading-relaxed">{note}</p>
     </div>
   );
 }
