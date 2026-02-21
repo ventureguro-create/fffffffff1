@@ -1,23 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Wallet, ChevronDown, ChevronRight, Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { 
-  IconInfluencer, 
-  IconNetwork, 
-  IconCluster, 
-  IconAltSeason, 
-  IconLifecycle, 
-  IconNarratives, 
-  IconRadar, 
-  IconTrophy, 
-  IconFund, 
-  IconOverlapFarm, 
-  IconStrategy 
-} from './icons/FomoIcons';
 
 export function Sidebar({ globalState }) {
   const location = useLocation();
-  const [expandedGroups, setExpandedGroups] = useState(['sentiment', 'connections']); // Sentiment & Connections expanded by default
+  const [expandedGroups, setExpandedGroups] = useState(['telegram']); // Telegram expanded by default
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   // Close mobile sidebar on route change
@@ -34,11 +21,11 @@ export function Sidebar({ globalState }) {
     return () => window.removeEventListener('keydown', handleEscape);
   }, []);
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
   
   // Check if any child in group is active
   const isGroupActive = (children) => {
-    return children?.some(child => location.pathname === child.path);
+    return children?.some(child => location.pathname.startsWith(child.path));
   };
 
   const toggleGroup = (groupId) => {
@@ -51,50 +38,22 @@ export function Sidebar({ globalState }) {
 
   // Navigation items with groups support
   const navItems = [
+    { path: '/', label: 'Dashboard', icon: '🏠' },
     { path: '/market', label: 'Market', icon: '📊' },
-    { path: '/telegram', label: 'Telegram', icon: '📱' },
+    // Telegram group with children
+    { 
+      id: 'telegram',
+      label: 'Telegram', 
+      icon: '📱',
+      children: [
+        { path: '/telegram', label: 'Entities', icon: '🏢' },
+      ]
+    },
     { path: '/tokens', label: 'Tokens', icon: '🪙' },
     { path: '/wallets', label: 'Wallets', icon: '👛' },
     { path: '/entities', label: 'Entities', icon: '🏢' },
     { path: '/actors', label: 'Actors', icon: '👤' },
-    { path: '/actors/correlation', label: 'Graph', icon: '🕸️' },
     { path: '/signals', label: 'Signals', icon: '📡' },
-    { path: '/engine', label: 'Engine', icon: '🧠' },
-    { path: '/rankings', label: 'Rankings', icon: '🏆' },
-    { path: '/dashboard/parser', label: 'Parser', icon: '🐦' },
-    { path: '/dashboard/twitter', label: 'Twitter', icon: '🐦' },
-    // Sentiment group with children (3 tabs)
-    { 
-      id: 'sentiment',
-      label: 'Sentiment', 
-      icon: '🎭',
-      children: [
-        { path: '/sentiment', label: 'Analyzer', icon: '🔗' },
-        { path: '/sentiment/twitter', label: 'Twitter Feed', icon: '📱' },
-        { path: '/sentiment/twitter-ai', label: 'Twitter AI', icon: '🤖' },
-      ]
-    },
-    { path: '/', label: 'Dashboard', icon: '🏠' },
-    // Connections group with children - using FomoIcons
-    { 
-      id: 'connections',
-      label: 'Connections', 
-      icon: '🔗',
-      useSvgIcons: true,
-      children: [
-        { path: '/connections/influencers', label: 'Influencers', IconComponent: IconInfluencer },
-        { path: '/connections/graph', label: 'Graph', IconComponent: IconNetwork },
-        { path: '/connections/clusters', label: 'Clusters', IconComponent: IconCluster },
-        { path: '/connections/alt-season', label: 'Alt Season', IconComponent: IconAltSeason },
-        { path: '/connections/lifecycle', label: 'Lifecycle', IconComponent: IconLifecycle },
-        { path: '/connections/narratives', label: 'Narratives', IconComponent: IconNarratives },
-        { path: '/connections/radar', label: 'Radar', IconComponent: IconRadar },
-        { path: '/connections/reality', label: 'Reality', IconComponent: IconTrophy },
-        { path: '/connections/backers', label: 'Backers', IconComponent: IconFund },
-        { path: '/connections/farm-network', label: 'Farm Network', IconComponent: IconOverlapFarm },
-        { path: '/connections/strategy-simulation', label: 'Strategy Sim', IconComponent: IconStrategy },
-      ]
-    },
   ];
 
   return (
@@ -133,12 +92,11 @@ export function Sidebar({ globalState }) {
 
         {/* Logo */}
         <div className="p-6 border-b border-gray-800">
-          <Link to="/" className="flex items-center">
-            <img 
-              src="/assets/logo.svg" 
-              alt="FOMO" 
-              className="h-8 w-auto"
-            />
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+              <span className="text-gray-900 font-bold text-sm">F</span>
+            </div>
+            <span className="text-white font-bold text-lg">FOMO</span>
           </Link>
         </div>
 
@@ -155,7 +113,7 @@ export function Sidebar({ globalState }) {
                 {/* Group header */}
                 <button
                   onClick={() => toggleGroup(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm transition-colors ${
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
                     hasActiveChild
                       ? 'bg-gray-800 text-white font-medium'
                       : 'text-gray-300 hover:bg-gray-800 hover:text-white'
@@ -175,30 +133,20 @@ export function Sidebar({ globalState }) {
                 {/* Children */}
                 {isExpanded && (
                   <div className="ml-4 mt-1 space-y-1 border-l border-gray-700 pl-2">
-                    {item.children.map((child) => {
-                      const IconComp = child.IconComponent;
-                      return (
-                        <Link
-                          key={child.path}
-                          to={child.path}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm ${
-                            isActive(child.path)
-                              ? 'bg-gray-800 text-white font-medium'
-                              : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                          }`}
-                        >
-                          {IconComp ? (
-                            <IconComp 
-                              size={16} 
-                              className={isActive(child.path) ? 'text-blue-400' : 'text-gray-400'}
-                            />
-                          ) : (
-                            <span className="text-xs">{child.icon}</span>
-                          )}
-                          <span>{child.label}</span>
-                        </Link>
-                      );
-                    })}
+                    {item.children.map((child) => (
+                      <Link
+                        key={child.path}
+                        to={child.path}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${
+                          isActive(child.path)
+                            ? 'bg-gray-800 text-white font-medium'
+                            : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                        }`}
+                      >
+                        <span className="text-xs">{child.icon}</span>
+                        <span>{child.label}</span>
+                      </Link>
+                    ))}
                   </div>
                 )}
               </div>
@@ -210,8 +158,10 @@ export function Sidebar({ globalState }) {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-2 px-3 py-2 rounded text-sm ${
-                isActive(item.path)
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                isActive(item.path) && item.path !== '/'
+                  ? 'bg-gray-800 text-white font-medium'
+                  : item.path === '/' && location.pathname === '/'
                   ? 'bg-gray-800 text-white font-medium'
                   : 'text-gray-300 hover:bg-gray-800 hover:text-white'
               }`}
