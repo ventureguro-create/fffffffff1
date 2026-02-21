@@ -1098,11 +1098,11 @@ async def admin_census_status():
     safe_mode = await db.tg_runtime_state.find_one({"_id": "safe_mode"})
     
     # Recent errors
-    recent_errors = await db.tg_channel_states.find(
-        {"lastError.at": {"$exists": True}}
-    ).project({
-        "username": 1, "stage": 1, "lastError": 1
-    }).sort("lastError.at", -1).limit(10).to_list(10)
+    recent_errors_cursor = db.tg_channel_states.find(
+        {"lastError.at": {"$exists": True}},
+        {"username": 1, "stage": 1, "lastError": 1}
+    ).sort("lastError.at", -1).limit(10)
+    recent_errors = await recent_errors_cursor.to_list(10)
     
     return {
         "ok": True,
