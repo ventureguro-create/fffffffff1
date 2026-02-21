@@ -455,6 +455,11 @@ async def get_utility_list(
         start_idx = (page - 1) * limit
         paginated = items[start_idx:start_idx + limit]
         
+        # Calculate stats
+        high_growth = len([i for i in items if i.get("growth7", 0) > 10])
+        high_risk = len([i for i in items if i.get("fraudRisk", 0) > 0.4])
+        avg_utility = sum(i.get("utilityScore", 50) for i in items) / len(items) if items else 0
+        
         return {
             "ok": True,
             "items": paginated,
@@ -462,6 +467,12 @@ async def get_utility_list(
             "page": page,
             "limit": limit,
             "pages": math.ceil(total / limit) if total > 0 else 1,
+            "stats": {
+                "tracked": total,
+                "avgUtility": round(avg_utility),
+                "highGrowth": high_growth,
+                "highRisk": high_risk
+            },
             "filters": {
                 "q": q,
                 "type": type,
