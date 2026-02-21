@@ -29,8 +29,7 @@ async def ensure_indexes():
     await db.tg_resolve_cache.create_index([("expiresAt", 1)], expireAfterSeconds=0)
     
     # Flood Events (rolling 1h)
-    await db.tg_flood_events.create_index([("ts", 1)])
-    await db.tg_flood_events.create_index([("ts", 1)], expireAfterSeconds=3600)
+    await db.tg_flood_events.create_index([("ts", 1)], name="ts_1", expireAfterSeconds=3600)
     
     # Posts
     await db.tg_posts.create_index([("channelUsername", 1), ("messageId", 1)], unique=True)
