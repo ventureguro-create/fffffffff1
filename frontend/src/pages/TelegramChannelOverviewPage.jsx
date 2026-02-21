@@ -1,49 +1,55 @@
 /**
- * Telegram Channel Overview Page (UI-FREEZE-1)
- * Channel detail view with all sections from design reference
+ * Telegram Channel Overview Page (Production)
+ * Connected to real backend API
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
-  RefreshCw, 
-  Users, 
-  Eye, 
-  MessageCircle, 
-  Activity,
-  ExternalLink,
-  TrendingUp,
-  TrendingDown,
-  Shield,
-  AlertTriangle,
+  ExternalLink, 
+  GitCompare,
+  Eye,
   Star,
-  Clock,
-  BarChart3,
-  Loader2
+  Heart,
+  MessageCircle,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
 export default function TelegramChannelOverviewPage() {
   const { username } = useParams();
-  const [data, setData] = useState(null);
+  const [channel, setChannel] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [timeRange, setTimeRange] = useState('24H');
+  const [showCompare, setShowCompare] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    if (!username) return;
-    
+  // Fetch channel data from backend
+  const fetchChannel = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
       const res = await fetch(`${API_BASE}/api/telegram-intel/channel/${username}/overview`);
-      if (!res.ok) throw new Error(`Error: ${res.status}`);
-      const json = await res.json();
-      setData(json);
+      
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error('Channel not found');
+        }
+        throw new Error(`API error: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      
+      if (!data.ok) {
+        throw new Error(data.message || 'Failed to load channel');
+      }
+      
+      setChannel(data);
     } catch (err) {
-      console.error('[Channel] Fetch error:', err);
+      console.error('[ChannelOverview] Fetch error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -51,23 +57,12 @@ export default function TelegramChannelOverviewPage() {
   }, [username]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await fetch(`${API_BASE}/api/telegram-intel/channel/${username}/refresh`, {
-        method: 'POST'
-      });
-      await fetchData();
-    } catch (err) {
-      console.error('[Channel] Refresh error:', err);
-    } finally {
-      setRefreshing(false);
+    if (username) {
+      fetchChannel();
     }
-  };
+  }, [username, fetchChannel]);
 
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -76,411 +71,789 @@ export default function TelegramChannelOverviewPage() {
     );
   }
 
-  if (error || !data?.ok) {
+  // Error state
+  if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 px-6 py-6">
-        <Link to="/telegram" className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
-          <ArrowLeft className="w-4 h-4" /> Back to Entities
-        </Link>
-        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl">
-          {error || 'Channel not found'}
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-[1400px] mx-auto px-6 py-6">
+          <Link to="/telegram" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Entities
+          </Link>
+          <div className="bg-white rounded-xl border border-red-200 p-8 text-center">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button 
+              onClick={fetchChannel}
+              className="px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  const { profile, topCards, aiSummary, activityOverview, audienceSnapshot, productOverview, channelSnapshot, healthSafety, relatedChannels, timeline, recentPosts, metrics } = data;
+  // No data
+  if (!channel) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-[1400px] mx-auto px-6 py-6">
+          <Link to="/telegram" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Entities
+          </Link>
+          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
+            Channel not found
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50" data-testid="channel-overview-page">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-[1400px] mx-auto px-6 py-6">
-        {/* Back Link */}
-        <Link to="/telegram" className="flex items-center gap-2 text-gray-600 hover:text-teal-600 mb-6 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Entities
-        </Link>
-
-        {/* Main Grid: 8 + 4 columns */}
-        <div className="grid grid-cols-12 gap-6">
-          {/* Left Column (8 cols) */}
-          <div className="col-span-12 lg:col-span-8 space-y-6">
-            {/* Channel Header */}
-            <ChannelHeader 
-              profile={profile} 
-              onRefresh={handleRefresh} 
-              refreshing={refreshing}
-              metrics={metrics}
-            />
-
-            {/* Top Cards Row */}
-            <div className="grid grid-cols-4 gap-4">
-              <TopCard 
-                label="Subscribers" 
-                value={formatNumber(topCards?.subscribers)} 
-                icon={<Users className="w-5 h-5 text-teal-500" />}
-              />
-              <TopCard 
-                label="Views/Post" 
-                value={formatNumber(topCards?.viewsPerPost)} 
-                icon={<Eye className="w-5 h-5 text-blue-500" />}
-              />
-              <TopCard 
-                label="Messages/Day" 
-                value={topCards?.messagesPerDay?.toFixed(1)} 
-                icon={<MessageCircle className="w-5 h-5 text-violet-500" />}
-              />
-              <TopCard 
-                label="Activity Level" 
-                value={topCards?.activityLevel} 
-                icon={<Activity className="w-5 h-5 text-amber-500" />}
-                badge
-              />
+        {/* Page Header */}
+        <div className="mb-6">
+          <Link to="/telegram" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Entities
+          </Link>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">Overview • Telegram Group/Channel</h1>
+              <p className="text-sm text-gray-500 mt-1">
+                High-level analytics for a single Telegram channel or group. Metrics are based on native Telegram stats and recent activity.
+              </p>
             </div>
+          </div>
+        </div>
 
-            {/* 3-column section */}
+        {/* Main Grid */}
+        <div className="grid grid-cols-12 gap-6">
+          {/* Left Column - 8 cols */}
+          <div className="col-span-8 space-y-6">
+            {/* Channel Header Card */}
+            <ChannelHeaderCard channel={channel} onCompare={() => setShowCompare(true)} />
+            
+            {/* Three Column Cards */}
             <div className="grid grid-cols-3 gap-4">
-              {/* Activity Overview */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">Activity Overview</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Posts/Day</span>
-                    <span className="font-medium text-gray-900">{activityOverview?.postsPerDay?.toFixed(1)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Active Days</span>
-                    <span className="font-medium text-gray-900">{activityOverview?.activeDays}/7</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Peak Hour</span>
-                    <span className="font-medium text-gray-900">{activityOverview?.peakHour}:00</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Consistency</span>
-                    <span className="font-medium text-gray-900">{(activityOverview?.consistency * 100)?.toFixed(0)}%</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Audience Snapshot */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">Audience Snapshot</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Total</span>
-                    <span className="font-medium text-gray-900">{formatNumber(audienceSnapshot?.total)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Growth 7D</span>
-                    <span className={`font-medium ${audienceSnapshot?.growth7d >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {audienceSnapshot?.growth7d >= 0 ? '+' : ''}{audienceSnapshot?.growth7d?.toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Growth 30D</span>
-                    <span className={`font-medium ${audienceSnapshot?.growth30d >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {audienceSnapshot?.growth30d >= 0 ? '+' : ''}{audienceSnapshot?.growth30d?.toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Engagement</span>
-                    <span className="font-medium text-gray-900">{(audienceSnapshot?.engagementRate * 100)?.toFixed(1)}%</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Product Overview */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">Product Overview</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Category</span>
-                    <span className="font-medium text-gray-900">{productOverview?.category}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Language</span>
-                    <span className="font-medium text-gray-900">{productOverview?.language}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Monetization</span>
-                    <span className="font-medium text-gray-900">{productOverview?.monetization}</span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="text-gray-500">Topics: </span>
-                    <span className="font-medium text-gray-900">{productOverview?.topics?.slice(0, 3).join(', ')}</span>
-                  </div>
-                </div>
-              </div>
+              <ActivityOverviewCard data={channel.activityOverview} />
+              <AudienceSnapshotCard data={channel.audienceSnapshot} />
+              <ProductOverviewCard data={channel.productOverview} />
             </div>
 
             {/* Engagement Timeline */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-semibold text-gray-900">Engagement Timeline</h3>
-                <div className="flex gap-2">
-                  {['24H', '7D', '30D', '90D'].map((period) => (
-                    <button 
-                      key={period}
-                      className="px-3 py-1 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-teal-100 hover:text-teal-700 transition-colors"
-                    >
-                      {period}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="h-48 flex items-end justify-between gap-1">
-                {timeline?.slice(0, 30).map((point, i) => (
-                  <div 
-                    key={i}
-                    className="flex-1 bg-teal-400 hover:bg-teal-500 rounded-t transition-colors"
-                    style={{ 
-                      height: `${Math.min(100, (point.views / (topCards?.viewsPerPost || 10000)) * 100)}%`,
-                      minHeight: '4px'
-                    }}
-                    title={`${point.date}: ${formatNumber(point.views)} views`}
-                  />
-                ))}
-              </div>
-            </div>
+            <EngagementTimelineCard 
+              data={channel.timeline} 
+              timeRange={timeRange}
+              onTimeRangeChange={setTimeRange}
+            />
 
             {/* Recent Posts */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Recent Posts</h3>
-              <div className="space-y-4">
-                {recentPosts?.slice(0, 5).map((post, i) => (
-                  <div key={post.id || i} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
-                    <p className="text-sm text-gray-700 mb-2 line-clamp-2">{post.text}</p>
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Eye className="w-3 h-3" /> {formatNumber(post.views)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="w-3 h-3" /> {post.forwards}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <MessageCircle className="w-3 h-3" /> {post.replies}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> {formatDate(post.date)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <RecentPostsCard posts={channel.recentPosts} />
           </div>
 
-          {/* Right Column (4 cols) */}
-          <div className="col-span-12 lg:col-span-4 space-y-6">
+          {/* Right Column - 4 cols */}
+          <div className="col-span-4 space-y-6">
             {/* AI Summary */}
-            <div className="bg-gradient-to-br from-teal-50 to-blue-50 rounded-xl border border-teal-100 p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Star className="w-4 h-4 text-teal-600" />
-                <h3 className="text-sm font-semibold text-teal-800">AI Summary</h3>
-              </div>
-              <p className="text-sm text-teal-700 leading-relaxed">{aiSummary}</p>
-            </div>
-
-            {/* Channel Snapshot (Live) */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-900">Channel Snapshot</h3>
-                {channelSnapshot?.live && (
-                  <span className="flex items-center gap-1 text-xs text-emerald-600">
-                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                    Live
-                  </span>
-                )}
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Last Post</span>
-                  <span className="font-medium text-gray-900">{formatDate(channelSnapshot?.lastPost)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Total Posts</span>
-                  <span className="font-medium text-gray-900">{formatNumber(channelSnapshot?.totalPosts)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Avg Views</span>
-                  <span className="font-medium text-gray-900">{formatNumber(channelSnapshot?.avgViews)}</span>
-                </div>
-              </div>
-            </div>
-
+            <AISummaryCard data={channel.aiSummary} />
+            
+            {/* Channel Snapshot */}
+            <ChannelSnapshotCard data={channel.channelSnapshot} />
+            
             {/* Health & Safety */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">Health & Safety</h3>
-              <div className="space-y-4">
-                <ProgressBar 
-                  label="Trust Score" 
-                  value={healthSafety?.trustScore} 
-                  color="teal"
-                />
-                <ProgressBar 
-                  label="Stability" 
-                  value={healthSafety?.stability * 100} 
-                  color="blue"
-                />
-                <ProgressBar 
-                  label="Fraud Risk" 
-                  value={healthSafety?.fraudRisk * 100} 
-                  color="rose"
-                  inverted
-                />
-                <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-100">
-                  <span className="text-gray-500 flex items-center gap-1">
-                    <AlertTriangle className="w-4 h-4 text-rose-400" />
-                    Red Flags
-                  </span>
-                  <span className="font-semibold text-rose-600">{healthSafety?.redFlags}</span>
-                </div>
-              </div>
-            </div>
-
+            <HealthSafetyCard data={channel.healthSafety} />
+            
             {/* Related Channels */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">Related Channels</h3>
-              <div className="space-y-3">
-                {relatedChannels?.slice(0, 4).map((ch, i) => (
-                  <Link 
-                    key={ch.username || i}
-                    to={`/telegram/${ch.username}`}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div 
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-                      style={{ backgroundColor: ch.avatarColor }}
-                    >
-                      {ch.title?.substring(0, 2).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900 truncate">{ch.title}</div>
-                      <div className="text-xs text-gray-500">{formatNumber(ch.members)} members</div>
-                    </div>
-                    <div className="text-xs font-medium text-teal-600">{ch.utilityScore}</div>
-                  </Link>
-                ))}
-              </div>
-            </div>
+            <RelatedChannelsCard channels={channel.relatedChannels} />
           </div>
         </div>
       </div>
-    </div>
-  );
-}
 
-// Sub-components
-
-function ChannelHeader({ profile, onRefresh, refreshing, metrics }) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
-          <div 
-            className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold"
-            style={{ backgroundColor: profile?.avatarColor || '#1976D2' }}
-          >
-            {profile?.title?.substring(0, 2).toUpperCase() || '??'}
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{profile?.title}</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-gray-500">@{profile?.username}</span>
-              <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">{profile?.type}</span>
-            </div>
-            {profile?.about && (
-              <p className="text-sm text-gray-600 mt-2 max-w-xl">{profile.about}</p>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <div className="text-3xl font-bold text-teal-600">{metrics?.utilityScore || '—'}</div>
-            <div className="text-xs text-gray-500">FOMO Score</div>
-          </div>
-          <button
-            onClick={onRefresh}
-            disabled={refreshing}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
-            title="Refresh channel data"
-            data-testid="refresh-button"
-          >
-            <RefreshCw className={`w-5 h-5 text-gray-500 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TopCard({ label, value, icon, badge }) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <div className="flex items-center gap-2 mb-2">
-        {icon}
-        <span className="text-xs text-gray-500">{label}</span>
-      </div>
-      {badge ? (
-        <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
-          value === 'High' ? 'bg-teal-100 text-teal-700' :
-          value === 'Medium' ? 'bg-amber-100 text-amber-700' :
-          'bg-rose-100 text-rose-600'
-        }`}>
-          {value || '—'}
-        </span>
-      ) : (
-        <div className="text-xl font-bold text-gray-900">{value || '—'}</div>
+      {/* Compare Modal */}
+      {showCompare && (
+        <CompareModal 
+          channel1={channel} 
+          onClose={() => setShowCompare(false)} 
+        />
       )}
     </div>
   );
 }
 
-function ProgressBar({ label, value, color, inverted }) {
-  const colorMap = {
-    teal: 'bg-teal-500',
-    blue: 'bg-blue-500',
-    rose: 'bg-rose-500',
-  };
+function ChannelHeaderCard({ channel, onCompare }) {
+  const { profile, topCards } = channel;
   
   return (
-    <div>
-      <div className="flex justify-between text-sm mb-1">
-        <span className="text-gray-500">{label}</span>
-        <span className="font-medium text-gray-900">{value?.toFixed(0)}%</span>
+    <div className="bg-white rounded-xl border border-gray-200 p-6" data-testid="channel-header">
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <div 
+            className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold"
+            style={{ backgroundColor: profile.avatarColor }}
+          >
+            {profile.title.substring(0, 2).toUpperCase()}
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">{profile.title}</h2>
+            <span className="text-sm text-teal-600">{profile.type}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <a 
+            href={profile.telegramUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors flex items-center gap-2"
+          >
+            View on Telegram
+          </a>
+          <button 
+            onClick={onCompare}
+            className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+          >
+            <GitCompare className="w-4 h-4" />
+            Compare
+          </button>
+        </div>
       </div>
-      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div 
-          className={`h-full rounded-full transition-all ${colorMap[color]}`}
-          style={{ width: `${Math.min(100, value || 0)}%` }}
+
+      <p className="text-sm text-gray-600 mb-4">
+        {profile.description} <span className="text-teal-600 cursor-pointer">See More</span>
+      </p>
+
+      <div className="flex items-center justify-between text-xs text-gray-500 mb-6">
+        <span>Snapshot updated {profile.updatedAt}</span>
+      </div>
+
+      {/* Top Cards Row */}
+      <div className="grid grid-cols-4 gap-4">
+        <TopMetricCard 
+          label="Subscribers"
+          value={topCards.subscribers.toLocaleString()}
+          subtitle={topCards.subscribersChange}
+          subtitleColor="text-teal-600"
+        />
+        <TopMetricCard 
+          label="Views/Post"
+          value={topCards.viewsPerPost.toLocaleString()}
+          subtitle={topCards.viewsSubtitle}
+          subtitleColor="text-teal-600"
+        />
+        <TopMetricCard 
+          label="Messages/Day"
+          value={topCards.messagesPerDay}
+          subtitle={topCards.messagesSubtitle}
+        />
+        <TopMetricCard 
+          label="Activity"
+          value={null}
+          badge={topCards.activity}
+          subtitle={topCards.activitySubtitle}
         />
       </div>
     </div>
   );
 }
 
-// Utility functions
-
-function formatNumber(num) {
-  if (num === null || num === undefined) return '—';
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-  if (num >= 1000) return (num / 1000).toFixed(num >= 10000 ? 0 : 1) + 'k';
-  return num.toString();
+function TopMetricCard({ label, value, subtitle, subtitleColor, badge }) {
+  return (
+    <div className="text-center">
+      <div className="text-xs text-gray-500 mb-1">{label}</div>
+      {value && <div className="text-2xl font-semibold text-gray-900">{value}</div>}
+      {badge && (
+        <span className="inline-block px-3 py-1 bg-teal-100 text-teal-700 text-sm font-medium rounded-full">
+          {badge}
+        </span>
+      )}
+      {subtitle && (
+        <div className={`text-xs mt-1 ${subtitleColor || 'text-gray-500'}`}>{subtitle}</div>
+      )}
+    </div>
+  );
 }
 
-function formatDate(dateStr) {
-  if (!dateStr) return '—';
-  try {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffHours = Math.floor((now - date) / (1000 * 60 * 60));
+function ActivityOverviewCard({ data }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="activity-overview">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900">Activity Overview</h3>
+        <span className="text-xs text-gray-400 px-2 py-1 bg-gray-100 rounded">Last 30 Days</span>
+      </div>
+      <p className="text-xs text-gray-500 mb-4">Posting rhythm & engagement patterns.</p>
+      
+      <div className="space-y-4">
+        <MetricRow label="Posts/day" value={data.postsPerDay} />
+        <MetricRowProgress label="View-rate stability" value={data.viewRateStability} progress={data.viewRateValue} />
+        <MetricRowProgress label="Forward volatility" value={data.forwardVolatility} progress={data.forwardValue} />
+      </div>
+    </div>
+  );
+}
+
+function AudienceSnapshotCard({ data }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="audience-snapshot">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900">Audience Snapshot</h3>
+        <span className="text-xs text-gray-400 px-2 py-1 bg-gray-100 rounded">Last 30D</span>
+      </div>
+      <p className="text-xs text-gray-500 mb-4">Where engagement comes from.</p>
+      
+      <div className="space-y-3">
+        <MetricRow label="Direct channel followers" value={`${data.directFollowers}%`} />
+        <MetricRow label="Cross-post traffic (other groups/channels)" value={`${data.crossPost}%`} />
+        <MetricRow label="Search & hashtags" value={`${data.searchHashtags}%`} />
+        <MetricRow label="External shares" value={`${data.externalShares}%`} />
+      </div>
+    </div>
+  );
+}
+
+function ProductOverviewCard({ data }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="product-overview">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900">Product Overview</h3>
+        <span className="text-xs text-gray-400 px-2 py-1 bg-gray-100 rounded">User-Rated • Last 30D</span>
+      </div>
+      <p className="text-xs text-gray-500 mb-4">What this channel offers and how users perceive its value.</p>
+      
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-600">Product type</span>
+          <div className="flex items-center gap-1">
+            {[1,2,3,4].map(i => <Star key={i} className="w-3 h-3 text-amber-400 fill-amber-400" />)}
+            <Star className="w-3 h-3 text-gray-300" />
+            <span className="text-sm font-medium ml-1">{data.rating}/5</span>
+          </div>
+        </div>
+        
+        <div className="flex flex-wrap gap-1">
+          {data.tags.map(tag => (
+            <span key={tag} className="px-2 py-1 bg-teal-50 text-teal-700 text-xs rounded">
+              {tag}
+            </span>
+          ))}
+        </div>
+        
+        <div>
+          <div className="text-xs font-medium text-gray-700 mb-1">User feedback summary</div>
+          <p className="text-xs text-gray-500 leading-relaxed">{data.feedback}</p>
+        </div>
+        
+        <div>
+          <div className="text-xs font-medium text-gray-700 mb-1">Trust indicators</div>
+          <ul className="space-y-1">
+            {data.trustIndicators.map((item, i) => (
+              <li key={i} className="text-xs text-gray-500 flex items-start gap-1">
+                <span>•</span> {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        
+        <MetricRow label="Refund & complaint rate" value={data.refundRate} />
+      </div>
+    </div>
+  );
+}
+
+function AISummaryCard({ data }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="ai-summary">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900">AI Summary</h3>
+        <span className="text-xs text-gray-400 px-2 py-1 bg-gray-100 rounded">Auto-generated</span>
+      </div>
+      
+      <p className="text-sm text-gray-600 leading-relaxed mb-4">
+        {data.text} <span className="text-teal-600 cursor-pointer">See More</span>
+      </p>
+      
+      <div className="flex flex-wrap gap-2 mb-4">
+        <span className="px-2 py-1 bg-teal-50 text-teal-700 text-xs rounded">
+          Spam level: {data.spamLevel}
+        </span>
+        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+          Signal/noise: {data.signalNoise}/10
+        </span>
+      </div>
+      
+      <div className="text-xs text-gray-500">
+        Content exposure: {data.contentExposure.join(', ')}
+      </div>
+    </div>
+  );
+}
+
+function ChannelSnapshotCard({ data }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="channel-snapshot">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900">Channel Snapshot</h3>
+        <span className="text-xs text-teal-600 px-2 py-1 bg-teal-50 rounded">Live</span>
+      </div>
+      
+      <div className="space-y-3">
+        <MetricRow label="Online now" value={data.onlineNow.toLocaleString()} />
+        <MetricRow label="24h peak online" value={data.peak24h.toLocaleString()} />
+        <MetricRow label="Active senders (24h)" value={data.activeSenders.toLocaleString()} />
+        <MetricRow label="Retention (7d returning viewers)" value={`${data.retention7d}%`} />
+      </div>
+      
+      <p className="text-xs text-gray-500 mt-4 leading-relaxed">
+        Online & active sender stats are estimated from Telegram's native analytics (views, forwards, reactions) and updated every few minutes.
+      </p>
+    </div>
+  );
+}
+
+function HealthSafetyCard({ data }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="health-safety">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900">Health & Safety</h3>
+        <span className="text-xs text-gray-400 px-2 py-1 bg-gray-100 rounded">Live Snapshot</span>
+      </div>
+      
+      <div className="space-y-4">
+        <MetricRowProgress label="Spam Level" value={data.spamLevel.label} progress={data.spamLevel.value} color="teal" />
+        <MetricRowProgress label="Raid risk" value={data.raidRisk.label} progress={data.raidRisk.value} color="amber" />
+        <MetricRowProgress label="Mod coverage" value={data.modCoverage.label} progress={data.modCoverage.value} color="teal" />
+      </div>
+      
+      <p className="text-xs text-gray-500 mt-4 leading-relaxed">{data.note}</p>
+    </div>
+  );
+}
+
+function RelatedChannelsCard({ channels }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="related-channels">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900">Related Channels</h3>
+        <span className="text-xs text-gray-400 px-2 py-1 bg-gray-100 rounded">You might track next</span>
+      </div>
+      
+      <div className="space-y-3">
+        {channels.map((ch, i) => (
+          <div key={i} className="flex items-center justify-between">
+            <span className="text-sm text-gray-700">{ch.title}</span>
+            <span className="text-xs">
+              Activity: <ActivityBadgeSmall level={ch.activity} />
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EngagementTimelineCard({ data, timeRange, onTimeRangeChange }) {
+  const maxViews = Math.max(...data.map(d => d.views));
+  
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6" data-testid="engagement-timeline">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Engagement Timeline</h3>
+        <div className="flex items-center gap-2">
+          {['24H', '7D', '30D', '90D'].map(range => (
+            <button
+              key={range}
+              onClick={() => onTimeRangeChange(range)}
+              className={`px-3 py-1 text-xs rounded-lg transition-colors ${
+                timeRange === range 
+                  ? 'bg-teal-600 text-white' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {range}
+            </button>
+          ))}
+        </div>
+      </div>
+      
+      {/* Legend */}
+      <div className="flex items-center gap-4 mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-teal-500" />
+          <span className="text-xs text-gray-600">Views</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-blue-500" />
+          <span className="text-xs text-gray-600">Reactions</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-amber-500" />
+          <span className="text-xs text-gray-600">Joins</span>
+        </div>
+      </div>
+      
+      {/* Simple Chart */}
+      <div className="h-48 flex items-end gap-4">
+        {data.map((d, i) => (
+          <div key={i} className="flex-1 flex flex-col items-center gap-2">
+            <div 
+              className="w-full bg-teal-500 rounded-t"
+              style={{ height: `${(d.views / maxViews) * 100}%`, minHeight: 4 }}
+            />
+            <span className="text-xs text-gray-500">{d.time}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RecentPostsCard({ posts }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6" data-testid="recent-posts">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Recent Posts</h3>
+        <span className="text-xs text-gray-400 px-2 py-1 bg-gray-100 rounded">Preview Only</span>
+      </div>
+      
+      <div className="space-y-6">
+        {posts.map(post => (
+          <div key={post.id} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+            <p className="text-sm text-gray-700 leading-relaxed mb-3">{post.text}</p>
+            
+            {post.images && (
+              <div className="flex gap-2 mb-3">
+                {post.images.map((img, i) => (
+                  <div key={i} className="w-16 h-16 bg-gray-200 rounded-lg" />
+                ))}
+              </div>
+            )}
+            
+            {post.hasLink && (
+              <div className="flex items-center gap-2 mb-3 p-2 bg-gray-50 rounded-lg">
+                <div className="w-10 h-10 bg-gray-200 rounded" />
+                <div>
+                  <div className="text-xs font-medium">{post.hasLink.title}</div>
+                  <div className="text-xs text-gray-500">{post.hasLink.url}</div>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <div className="flex items-center gap-4">
+                <span className="flex items-center gap-1">
+                  <Heart className="w-3 h-3" /> {post.likes}
+                </span>
+                <span className="flex items-center gap-1">
+                  <MessageCircle className="w-3 h-3" /> {post.comments}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Eye className="w-3 h-3" /> {(post.views / 1000).toFixed(1)}k
+                </span>
+              </div>
+              <span>{post.date}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MetricRow({ label, value }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-sm text-gray-600">{label}</span>
+      <span className="text-sm font-medium text-gray-900">{value}</span>
+    </div>
+  );
+}
+
+function MetricRowProgress({ label, value, progress, color = 'teal' }) {
+  const colorMap = {
+    teal: 'bg-teal-500',
+    amber: 'bg-amber-500',
+    red: 'bg-red-500',
+  };
+  
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-sm text-gray-600 flex-shrink-0">{label}</span>
+      <div className="flex items-center gap-2 flex-1 max-w-[150px]">
+        <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+          <div 
+            className={`h-full rounded-full ${colorMap[color]}`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="text-sm font-medium text-gray-900 w-16 text-right">{value}</span>
+      </div>
+    </div>
+  );
+}
+
+function ActivityBadgeSmall({ level }) {
+  const styles = {
+    High: 'bg-teal-100 text-teal-700',
+    Medium: 'bg-amber-100 text-amber-700',
+    Low: 'bg-rose-100 text-rose-600',
+  };
+  
+  return (
+    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${styles[level] || styles.Medium}`}>
+      {level}
+    </span>
+  );
+}
+
+function CompareModal({ channel1, onClose }) {
+  const [channel2, setChannel2] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Search for channels to compare
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchTerm.trim()) return;
     
-    if (diffHours < 1) return 'Just now';
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffHours < 48) return 'Yesterday';
-    if (diffHours < 168) return `${Math.floor(diffHours / 24)}d ago`;
+    setSearching(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/telegram-intel/utility/list?q=${encodeURIComponent(searchTerm)}&limit=5`);
+      const data = await res.json();
+      setSearchResults(data.items || []);
+    } catch (err) {
+      console.error('Search error:', err);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // Select a channel for comparison
+  const selectChannel = async (username) => {
+    if (username === channel1.profile.username) return; // Can't compare with itself
     
-    return date.toLocaleDateString();
-  } catch {
-    return '—';
-  }
+    setLoading(true);
+    setSearchResults([]);
+    setSearchTerm('');
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/telegram-intel/channel/${username}/overview`);
+      const data = await res.json();
+      if (data.ok) {
+        setChannel2(data);
+      }
+    } catch (err) {
+      console.error('Load channel error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate diff for metrics
+  const getDiff = (val1, val2) => {
+    if (!val2 || val1 === val2) return null;
+    const diff = ((val1 - val2) / val2 * 100).toFixed(1);
+    return diff > 0 ? `+${diff}%` : `${diff}%`;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={onClose}>
+      <div 
+        className="bg-white rounded-xl w-[900px] max-h-[90vh] overflow-auto p-6"
+        onClick={e => e.stopPropagation()}
+        data-testid="compare-modal"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold">Comparison</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl" data-testid="close-compare">×</button>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-8">
+          {/* Left Channel */}
+          <CompareColumn channel={channel1} isLeft />
+          
+          {/* Right Channel - Search or Selected */}
+          {channel2 ? (
+            <div>
+              <button 
+                onClick={() => setChannel2(null)}
+                className="text-xs text-gray-500 hover:text-gray-700 mb-4"
+              >
+                ← Change channel
+              </button>
+              <CompareColumn channel={channel2} compareWith={channel1} />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <form onSubmit={handleSearch} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Search channel to compare..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-100"
+                  data-testid="compare-search"
+                />
+                <button 
+                  type="submit"
+                  disabled={searching}
+                  className="px-4 py-2 bg-teal-500 text-white rounded-lg text-sm hover:bg-teal-600 disabled:opacity-50"
+                >
+                  {searching ? '...' : 'Search'}
+                </button>
+              </form>
+              
+              {loading && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
+                </div>
+              )}
+              
+              {searchResults.length > 0 && (
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  {searchResults.map(ch => (
+                    <button
+                      key={ch.username}
+                      onClick={() => selectChannel(ch.username)}
+                      disabled={ch.username === channel1.profile.username}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 text-left border-b border-gray-100 last:border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      data-testid={`compare-option-${ch.username}`}
+                    >
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
+                        style={{ backgroundColor: ch.avatarColor }}
+                      >
+                        {ch.title?.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm">{ch.title}</div>
+                        <div className="text-xs text-gray-500">{ch.type} • Score: {ch.fomoScore}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              {!loading && searchResults.length === 0 && !searchTerm && (
+                <div className="text-center py-8 text-gray-400 text-sm">
+                  Search for a channel to compare
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompareColumn({ channel, compareWith, isLeft }) {
+  const { profile, topCards, aiSummary, activityOverview, audienceSnapshot, channelSnapshot, healthSafety, productOverview } = channel;
+  
+  // Calculate diff
+  const getDiff = (val1, val2) => {
+    if (!compareWith || !val2 || val1 === val2) return null;
+    const diff = ((val1 - val2) / val2 * 100);
+    const formatted = diff > 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`;
+    return { value: formatted, positive: diff > 0 };
+  };
+  
+  const compareTo = compareWith?.topCards;
+  
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div 
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+          style={{ backgroundColor: profile.avatarColor }}
+        >
+          {profile.title.substring(0, 2).toUpperCase()}
+        </div>
+        <div>
+          <div className="font-semibold">{profile.title}</div>
+          <div className="text-sm text-teal-600">{profile.type}</div>
+        </div>
+      </div>
+      
+      {/* Basics */}
+      <CompareSection title="Basics">
+        <MetricRow label="Members" value={topCards.subscribers.toLocaleString()} />
+        <div className="text-xs text-teal-600 text-right mb-2">{topCards.subscribersChange}</div>
+        <MetricRow label="Views/Post" value={topCards.viewsPerPost.toLocaleString()} />
+        <MetricRow label="Messages/Day" value={topCards.messagesPerDay} />
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-sm text-gray-600">Activity</span>
+          <ActivityBadgeSmall level={topCards.activity} />
+        </div>
+      </CompareSection>
+      
+      {/* AI Summary */}
+      <CompareSection title="AI Summary">
+        <MetricRow label="Spam level" value={<ActivityBadgeSmall level={aiSummary.spamLevel === 'Low' ? 'Low' : 'Medium'} />} />
+        <MetricRow label="Signal/noise" value={`${aiSummary.signalNoise}/10`} />
+        <div className="text-xs text-gray-500 mt-2">
+          Content exposure: {aiSummary.contentExposure.join(', ')}
+        </div>
+      </CompareSection>
+      
+      {/* Activity Overview */}
+      <CompareSection title="Activity Overview">
+        <MetricRow label="Posts/Day" value={activityOverview.postsPerDay} />
+        <MetricRowProgress label="View-rate stability" value={activityOverview.viewRateStability} progress={activityOverview.viewRateValue} />
+        <MetricRowProgress label="Forward volatility" value={activityOverview.forwardVolatility} progress={activityOverview.forwardValue} />
+      </CompareSection>
+      
+      {/* Audience Snapshot */}
+      <CompareSection title="Audience Snapshot">
+        <MetricRow label="Direct channel followers" value={`${audienceSnapshot.directFollowers}%`} />
+        <MetricRow label="Cross-post traffic (other groups/channels)" value={`${audienceSnapshot.crossPost}%`} />
+        <MetricRow label="Search & hashtags" value={`${audienceSnapshot.searchHashtags}%`} />
+        <MetricRow label="External shares" value={`${audienceSnapshot.externalShares}%`} />
+      </CompareSection>
+      
+      {/* Channel Snapshot */}
+      <CompareSection title="Channel Snapshot">
+        <MetricRow label="Online now" value={channelSnapshot.onlineNow} />
+        <MetricRow label="24h peak online" value={channelSnapshot.peak24h.toLocaleString()} />
+        <MetricRow label="Active senders (24h)" value={channelSnapshot.activeSenders} />
+        <MetricRow label="Retention (7d returning viewers)" value={`${channelSnapshot.retention7d}%`} />
+      </CompareSection>
+      
+      {/* Health & Safety */}
+      <CompareSection title="Health & Safety">
+        <MetricRowProgress label="Spam Level" value={healthSafety.spamLevel.label} progress={healthSafety.spamLevel.value} />
+        <MetricRowProgress label="Raid risk" value={healthSafety.raidRisk.label} progress={healthSafety.raidRisk.value} color="amber" />
+        <MetricRowProgress label="Mod coverage" value={healthSafety.modCoverage.label} progress={healthSafety.modCoverage.value} />
+      </CompareSection>
+      
+      {/* Product Overview */}
+      <CompareSection title="Product Overview">
+        <div className="flex items-center gap-1 mb-2">
+          {[1,2,3,4].map(i => <Star key={i} className="w-3 h-3 text-amber-400 fill-amber-400" />)}
+          <Star className="w-3 h-3 text-gray-300" />
+          <span className="text-sm font-medium ml-1">{productOverview.rating}/5</span>
+        </div>
+        <div className="flex flex-wrap gap-1 mb-2">
+          {productOverview.tags.map(tag => (
+            <span key={tag} className="px-2 py-0.5 bg-teal-50 text-teal-700 text-xs rounded">
+              {tag}
+            </span>
+          ))}
+        </div>
+      </CompareSection>
+    </div>
+  );
+}
+
+function CompareSection({ title, children }) {
+  return (
+    <div>
+      <h4 className="font-semibold text-gray-900 mb-3">{title}</h4>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
 }
