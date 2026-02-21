@@ -404,6 +404,12 @@ function AISummaryCard({ data }) {
 }
 
 function ChannelSnapshotCard({ data }) {
+  // Default values if data is incomplete
+  const onlineNow = data?.onlineNow || data?.online || 0;
+  const peak24h = data?.peak24h || data?.peakOnline || 0;
+  const activeSenders = data?.activeSenders || 0;
+  const retention7d = data?.retention7d || data?.retention || 0;
+  
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="channel-snapshot">
       <div className="flex items-center justify-between mb-4">
@@ -412,10 +418,10 @@ function ChannelSnapshotCard({ data }) {
       </div>
       
       <div className="space-y-3">
-        <MetricRow label="Online now" value={data.onlineNow.toLocaleString()} />
-        <MetricRow label="24h peak online" value={data.peak24h.toLocaleString()} />
-        <MetricRow label="Active senders (24h)" value={data.activeSenders.toLocaleString()} />
-        <MetricRow label="Retention (7d returning viewers)" value={`${data.retention7d}%`} />
+        <MetricRow label="Online now" value={onlineNow.toLocaleString()} />
+        <MetricRow label="24h peak online" value={peak24h.toLocaleString()} />
+        <MetricRow label="Active senders (24h)" value={activeSenders.toLocaleString()} />
+        <MetricRow label="Retention (7d returning viewers)" value={`${retention7d}%`} />
       </div>
       
       <p className="text-xs text-gray-500 mt-4 leading-relaxed">
