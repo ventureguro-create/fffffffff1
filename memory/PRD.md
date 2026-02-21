@@ -4,8 +4,8 @@
 **Telegram Market Intelligence Terminal** - изолированный модуль для анализа Telegram-каналов
 
 **Status:** Development Complete ✅
-**Last Updated:** 2026-02-21
-**Version:** 1.0.0
+**Last Updated:** 2026-02-22
+**Version:** 1.0.1
 
 ---
 
@@ -23,16 +23,43 @@
 - ✅ `/api/telegram-intel/admin/metrics/recompute` - пересчёт метрик
 
 ### Frontend (React)
+- ✅ AppLayout с Sidebar и TopBar (оригинальный дизайн FOMO)
 - ✅ `/telegram` - Entities Overview page
 - ✅ `/telegram/:username` - Channel Overview page  
 - ✅ TelegramFilterDrawer - URL-driven фильтры
 - ✅ Responsive design с Tailwind CSS
+- ✅ Gilroy шрифт, скругления, правильные отступы
 
 ### Data Storage (MongoDB)
 - ✅ `tg_channel_states` - состояние каналов
 - ✅ `tg_score_snapshots` - снимки метрик
 - ✅ `tg_posts` - посты каналов
 - ✅ `tg_watchlist` - список отслеживания
+
+---
+
+## UI Design System
+
+### Шрифты
+- Gilroy font family
+- Page titles: 28px Bold
+- Section titles: 18px Semibold
+- Body: 14px Medium
+- Small: 12px Regular
+
+### Скругления
+- Cards: rounded-xl (12px)
+- Buttons: rounded-lg (8px) / rounded-full
+- Avatars: rounded-full
+- Badges: rounded (4px)
+
+### Цвета
+- Primary: Teal (#14b8a6)
+- Background: Gray-50 (#f9fafb)
+- Cards: White
+- Text: Gray-900 (primary), Gray-500 (secondary)
+- Positive: Emerald-600
+- Negative: Red-500
 
 ---
 
@@ -69,25 +96,21 @@ print(f.decrypt(data).decode())
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
+│   │   ├── layout/
+│   │   │   ├── AppLayout.jsx
+│   │   │   └── TopBar.jsx
+│   │   ├── components/
+│   │   │   ├── Sidebar.jsx
+│   │   │   └── telegram/
+│   │   │       └── TelegramFilterDrawer.jsx
 │   │   ├── pages/
 │   │   │   ├── TelegramEntitiesPage.jsx
 │   │   │   └── TelegramChannelOverviewPage.jsx
-│   │   ├── components/telegram/
-│   │   │   └── TelegramFilterDrawer.jsx
 │   │   └── api/
-│   │       ├── client.js
-│   │       └── telegramIntel.api.js
 │   └── package.json
 └── memory/
     └── PRD.md
 ```
-
----
-
-## Testing Results
-- **Backend:** 96.6% success rate
-- **Frontend:** 95% success rate
-- **Overall:** 96% success rate
 
 ---
 
@@ -98,7 +121,7 @@ print(f.decrypt(data).decode())
 - [ ] Cron jobs для автоматического обновления (12-24h)
 
 ### P1 (High)
-- [ ] Compare Modal UI компонент на frontend
+- [ ] Compare Modal UI компонент
 - [ ] Watchlist кнопка на Channel Page
 - [ ] Export данных в CSV
 
@@ -106,43 +129,3 @@ print(f.decrypt(data).decode())
 - [ ] AI Summary с OpenAI GPT
 - [ ] Расширенные формулы scoring
 - [ ] Dark mode theme
-
----
-
-## API Contracts
-
-### GET /api/telegram-intel/utility/list
-```typescript
-interface ListResponse {
-  ok: boolean;
-  items: ChannelItem[];
-  total: number;
-  page: number;
-  limit: number;
-  stats: {
-    tracked: number;
-    avgUtility: number;
-    highGrowth: number;
-    highRisk: number;
-  };
-}
-```
-
-### GET /api/telegram-intel/channel/:username/overview
-```typescript
-interface OverviewResponse {
-  ok: boolean;
-  profile: { username, title, type, about };
-  topCards: { subscribers, viewsPerPost, messagesPerDay, activityLevel };
-  aiSummary: string;
-  activityOverview: { postsPerDay, activeDays, peakHour, consistency };
-  audienceSnapshot: { total, growth7d, growth30d, engagementRate };
-  productOverview: { category, language, monetization, topics };
-  channelSnapshot: { live, lastPost, totalPosts, avgViews };
-  healthSafety: { trustScore, stability, fraudRisk, redFlags };
-  relatedChannels: ChannelItem[];
-  timeline: TimelinePoint[];
-  recentPosts: Post[];
-  metrics: Metrics;
-}
-```
