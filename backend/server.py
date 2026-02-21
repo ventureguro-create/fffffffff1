@@ -960,6 +960,430 @@ async def seed_channels():
 async def admin_health():
     return await telegram_health()
 
+# ====================== Admin Census & Discovery Routes (Safe Ingestion Controls) ======================
+
+# Import telegram-lite modules
+try:
+    from telegram_lite.policy import load_policy
+    from telegram_lite.safe_mode import is_safe_mode_active, record_flood_event, maybe_enter_safe_mode
+    from telegram_lite.scheduler import pick_next_channel, compute_next_allowed_at
+    from telegram_lite.lang_crypto import detect_lang_and_crypto
+    from telegram_lite.members_proxy import estimate_proxy_members
+    from telegram_lite.priority import compute_priority_from_census
+    from telegram_lite.discovery import run_discovery_window, blacklist_candidate, normalize_username
+    from telegram_lite.seeds import import_seeds
+    from telegram_lite.query_builder import parse_list_query, build_mongo_filter, build_mongo_sort
+    TG_MODULES_LOADED = True
+except ImportError as e:
+    logger.warning(f"telegram-lite modules not loaded: {e}")
+    TG_MODULES_LOADED = False
+    def normalize_username(x): return str(x or '').lower().replace('@', '')
+
+@telegram_router.post("/admin/seeds/import")
+async def admin_import_seeds(request: Request):
+    """
+    Import seed usernames as CANDIDATE channels
+    POST /api/telegram-intel/admin/seeds/import
+    """
+    body = await request.json()
+    usernames = body.get("usernames", [])
+    
+    if not usernames:
+        return {"ok": False, "error": "No usernames provided"}
+    
+    if TG_MODULES_LOADED:
+        result = await import_seeds(db, usernames)
+        return {"ok": True, "inserted": result.get("inserted", 0), "totalRequested": len(usernames)}
+    else:
+        # Fallback
+        now = datetime.now(timezone.utc)
+        inserted = 0
+        for u in usernames:
+            username = normalize_username(u)
+            if not username:
+                continue
+            result = await db.tg_channel_states.update_one(
+                {"username": username},
+                {
+                    "$setOnInsert": {
+                        "username": username,
+                        "stage": "CANDIDATE",
+                        "priority": 1,
+                        "nextAllowedAt": now,
+                        "createdAt": now,
+                    },
+                    "$set": {"updatedAt": now},
+                },
+                upsert=True
+            )
+            if result.upserted_id:
+                inserted += 1
+        return {"ok": True, "inserted": inserted, "totalRequested": len(usernames)}
+
+@telegram_router.get("/admin/census/summary")
+async def admin_census_summary():
+    """
+    Get census summary with stage distribution and rejection breakdown
+    GET /api/telegram-intel/admin/census/summary
+    """
+    policy = load_policy() if TG_MODULES_LOADED else {}
+    
+    # Stage distribution
+    agg = await db.tg_channel_states.aggregate([
+        {"$group": {"_id": "$stage", "count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}}
+    ]).to_list(100)
+    by_stage = {x["_id"]: x["count"] for x in agg}
+    
+    # Rejection breakdown
+    rejected = await db.tg_channel_states.aggregate([
+        {"$match": {"stage": "REJECTED"}},
+        {"$group": {"_id": "$rejectReason", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]).to_list(100)
+    
+    return {
+        "ok": True,
+        "policy": {
+            "minSubscribers": policy.get("minSubscribers", 1000),
+            "maxInactiveDays": policy.get("maxInactiveDays", 180),
+            "censusSampleLimit": policy.get("censusSampleLimit", 30),
+            "langAllow": policy.get("langAllow", ["ru", "uk", "mixed"]),
+            "cryptoMinScore": policy.get("cryptoMinScore", 0.08),
+        },
+        "stages": {
+            "CANDIDATE": by_stage.get("CANDIDATE", 0),
+            "PENDING": by_stage.get("PENDING", 0),
+            "QUALIFIED": by_stage.get("QUALIFIED", 0),
+            "REJECTED": by_stage.get("REJECTED", 0),
+        },
+        "rejectedBreakdown": [
+            {"reason": r["_id"] or "UNKNOWN", "count": r["count"]}
+            for r in rejected
+        ]
+    }
+
+@telegram_router.get("/admin/census/status")
+async def admin_census_status():
+    """
+    Get current census status: queue, safe mode, recent errors
+    GET /api/telegram-intel/admin/census/status
+    """
+    now = datetime.now(timezone.utc)
+    policy = load_policy() if TG_MODULES_LOADED else {}
+    
+    # Next candidate
+    next_candidate = await db.tg_channel_states.find_one(
+        {
+            "stage": {"$in": ["CANDIDATE", "PENDING"]},
+            "nextAllowedAt": {"$lte": now},
+        },
+        sort=[("priority", 1), ("lastCensusAt", 1), ("updatedAt", 1)]
+    )
+    
+    # Stage counts with eligibility
+    counts = await db.tg_channel_states.aggregate([
+        {
+            "$group": {
+                "_id": "$stage",
+                "count": {"$sum": 1},
+                "eligibleNow": {
+                    "$sum": {"$cond": [{"$lte": ["$nextAllowedAt", now]}, 1, 0]}
+                }
+            }
+        }
+    ]).to_list(100)
+    
+    # Safe mode
+    safe_mode = await db.tg_runtime_state.find_one({"_id": "safe_mode"})
+    
+    # Recent errors
+    recent_errors = await db.tg_channel_states.find(
+        {"lastError.at": {"$exists": True}}
+    ).project({
+        "username": 1, "stage": 1, "lastError": 1
+    }).sort("lastError.at", -1).limit(10).to_list(10)
+    
+    return {
+        "ok": True,
+        "now": now.isoformat(),
+        "safeMode": {
+            "until": safe_mode.get("until").isoformat() if safe_mode and safe_mode.get("until") else None,
+            "activatedAt": safe_mode.get("activatedAt").isoformat() if safe_mode and safe_mode.get("activatedAt") else None,
+            "reason": safe_mode.get("reason") if safe_mode else None,
+            "count": safe_mode.get("count") if safe_mode else None,
+        } if safe_mode else None,
+        "stageStats": [
+            {"stage": c["_id"], "count": c["count"], "eligibleNow": c["eligibleNow"]}
+            for c in counts
+        ],
+        "nextCandidate": {
+            "username": next_candidate.get("username"),
+            "stage": next_candidate.get("stage"),
+            "priority": next_candidate.get("priority"),
+            "nextAllowedAt": next_candidate.get("nextAllowedAt").isoformat() if next_candidate and next_candidate.get("nextAllowedAt") else None,
+        } if next_candidate else None,
+        "recentErrors": [
+            {"username": e.get("username"), "stage": e.get("stage"), "error": e.get("lastError")}
+            for e in recent_errors
+        ]
+    }
+
+@telegram_router.get("/admin/census/lang-audit")
+async def admin_lang_audit():
+    """
+    Audit language distribution for QUALIFIED channels
+    GET /api/telegram-intel/admin/census/lang-audit
+    """
+    # Top by crypto score
+    top = await db.tg_channel_states.find(
+        {"stage": "QUALIFIED"}
+    ).project({
+        "username": 1, "lang": 1, "langConfidence": 1, 
+        "cryptoRelevanceScore": 1, "cryptoHits": 1, "participantsCount": 1
+    }).sort("cryptoRelevanceScore", -1).limit(50).to_list(50)
+    
+    # Distribution
+    dist = await db.tg_channel_states.aggregate([
+        {"$match": {"stage": "QUALIFIED"}},
+        {
+            "$group": {
+                "_id": "$lang",
+                "count": {"$sum": 1},
+                "avgCrypto": {"$avg": "$cryptoRelevanceScore"}
+            }
+        },
+        {"$sort": {"count": -1}}
+    ]).to_list(100)
+    
+    return {
+        "ok": True,
+        "qualifiedLangDistribution": [
+            {"lang": x["_id"] or "unknown", "count": x["count"], "avgCrypto": x.get("avgCrypto")}
+            for x in dist
+        ],
+        "topCryptoQualified": [
+            {
+                "username": t.get("username"),
+                "lang": t.get("lang"),
+                "langConfidence": t.get("langConfidence"),
+                "cryptoRelevanceScore": t.get("cryptoRelevanceScore"),
+                "cryptoHits": t.get("cryptoHits"),
+                "members": t.get("participantsCount"),
+            }
+            for t in top
+        ]
+    }
+
+@telegram_router.post("/admin/channel/{username}/kick")
+async def admin_kick_channel(username: str, request: Request):
+    """
+    Force re-queue channel for processing
+    POST /api/telegram-intel/admin/channel/:username/kick
+    """
+    body = await request.json() if request else {}
+    clean_username = normalize_username(username)
+    stage = body.get("stage", "CANDIDATE")
+    reason = body.get("reason", "manual_kick")
+    
+    await db.tg_channel_states.update_one(
+        {"username": clean_username},
+        {
+            "$set": {
+                "stage": stage,
+                "nextAllowedAt": datetime.now(timezone.utc),
+                "kickedAt": datetime.now(timezone.utc),
+                "kickReason": reason,
+                "updatedAt": datetime.now(timezone.utc),
+            },
+            "$setOnInsert": {"createdAt": datetime.now(timezone.utc), "priority": 1}
+        },
+        upsert=True
+    )
+    
+    return {"ok": True, "username": clean_username, "stage": stage}
+
+@telegram_router.get("/admin/channel/{username}/members-audit")
+async def admin_members_audit(username: str):
+    """
+    Audit members estimation for a channel
+    GET /api/telegram-intel/admin/channel/:username/members-audit
+    """
+    clean_username = normalize_username(username)
+    
+    st = await db.tg_channel_states.find_one({"username": clean_username})
+    ch = await db.tg_channels.find_one({"username": clean_username})
+    
+    return {
+        "ok": True,
+        "username": clean_username,
+        "state": {
+            "stage": st.get("stage") if st else None,
+            "participantsCount": st.get("participantsCount") if st else None,
+            "proxyMembers": st.get("proxyMembers") if st else None,
+            "proxyMembersConfidence": st.get("proxyMembersConfidence") if st else None,
+            "proxyMembersReason": st.get("proxyMembersReason") if st else None,
+            "priority": st.get("priority") if st else None,
+            "lastPostAt": st.get("lastPostAt").isoformat() if st and st.get("lastPostAt") else None,
+            "cryptoRelevanceScore": st.get("cryptoRelevanceScore") if st else None,
+            "lang": st.get("lang") if st else None,
+        } if st else None,
+        "channel": {
+            "members": ch.get("members") if ch else None,
+            "avgReach": ch.get("avgReach") if ch else None,
+            "postsPerDay30": ch.get("postsPerDay30") if ch else None,
+            "utilityScore": ch.get("utilityScore") if ch else None,
+            "utilityTier": ch.get("utilityTier") if ch else None,
+        } if ch else None,
+    }
+
+@telegram_router.post("/admin/discovery/run")
+async def admin_discovery_run(request: Request):
+    """
+    Run discovery from recent posts
+    POST /api/telegram-intel/admin/discovery/run
+    """
+    body = await request.json() if request else {}
+    hours = int(body.get("hours", 48))
+    max_posts = int(body.get("maxPosts", 5000))
+    max_new_candidates = int(body.get("maxNewCandidates", 500))
+    
+    if TG_MODULES_LOADED:
+        result = await run_discovery_window(db, hours, max_posts, max_new_candidates)
+        return result
+    else:
+        return {"ok": False, "error": "Discovery modules not loaded"}
+
+@telegram_router.get("/admin/discovery/recent")
+async def admin_discovery_recent():
+    """
+    Get recent discovery edges
+    GET /api/telegram-intel/admin/discovery/recent
+    """
+    rows = await db.tg_discovery_edges.find().sort("createdAt", -1).limit(200).to_list(200)
+    
+    return {
+        "ok": True,
+        "edges": [
+            {
+                "sourceUsername": r.get("sourceUsername"),
+                "foundUsername": r.get("foundUsername"),
+                "method": r.get("method"),
+                "createdAt": r.get("createdAt").isoformat() if r.get("createdAt") else None,
+            }
+            for r in rows
+        ]
+    }
+
+# ====================== Enhanced Filter API (Real Data) ======================
+
+@telegram_router.get("/utility/list/v2")
+async def get_utility_list_v2(
+    q: Optional[str] = None,
+    lang: Optional[str] = None,
+    tier: Optional[str] = None,
+    lifecycle: Optional[str] = None,
+    minMembers: Optional[int] = None,
+    maxMembers: Optional[int] = None,
+    minReach: Optional[int] = None,
+    maxReach: Optional[int] = None,
+    minGrowth7: Optional[float] = None,
+    maxGrowth7: Optional[float] = None,
+    minPostsPerDay: Optional[float] = None,
+    maxPostsPerDay: Optional[float] = None,
+    maxFraud: Optional[float] = None,
+    minCrypto: Optional[float] = None,
+    sort: str = "utility",
+    order: str = "desc",
+    page: int = 1,
+    limit: int = 50
+):
+    """
+    Enhanced filter API with full query support
+    GET /api/telegram-intel/utility/list/v2
+    """
+    if TG_MODULES_LOADED:
+        parsed = parse_list_query({
+            "q": q, "lang": lang, "tier": tier, "lifecycle": lifecycle,
+            "minMembers": minMembers, "maxMembers": maxMembers,
+            "minReach": minReach, "maxReach": maxReach,
+            "minGrowth7": minGrowth7, "maxGrowth7": maxGrowth7,
+            "minPostsPerDay": minPostsPerDay, "maxPostsPerDay": maxPostsPerDay,
+            "maxFraud": maxFraud, "minCrypto": minCrypto,
+            "sort": sort, "order": order, "page": page, "limit": limit
+        })
+        flt = build_mongo_filter(parsed)
+        srt = build_mongo_sort(parsed)
+    else:
+        parsed = {"page": page, "limit": limit, "sort": sort, "order": order}
+        flt = {"utilityScore": {"$exists": True}}
+        srt = [("utilityScore", -1)]
+    
+    skip = (parsed["page"] - 1) * parsed["limit"]
+    
+    # Query channels
+    cursor = db.tg_channels.find(flt).sort(srt).skip(skip).limit(parsed["limit"])
+    items = await cursor.to_list(parsed["limit"])
+    
+    # Total count
+    total = await db.tg_channels.count_documents(flt)
+    
+    # Stats
+    stats_agg = await db.tg_channels.aggregate([
+        {"$match": flt},
+        {
+            "$group": {
+                "_id": None,
+                "tracked": {"$sum": 1},
+                "avgUtility": {"$avg": "$utilityScore"},
+                "avgGrowth7": {"$avg": "$growth7"},
+                "highFraud": {"$sum": {"$cond": [{"$gte": ["$fraudRisk", 0.6]}, 1, 0]}},
+                "highUtility": {"$sum": {"$cond": [{"$gte": ["$utilityScore", 75]}, 1, 0]}},
+            }
+        }
+    ]).to_list(1)
+    
+    stats_row = stats_agg[0] if stats_agg else {}
+    
+    return {
+        "ok": True,
+        "query": parsed,
+        "total": total,
+        "page": parsed["page"],
+        "limit": parsed["limit"],
+        "pages": math.ceil(total / parsed["limit"]) if total > 0 else 1,
+        "items": [
+            {
+                "username": i.get("username"),
+                "title": i.get("title"),
+                "type": "Channel" if i.get("isChannel", True) else "Group",
+                "members": i.get("members"),
+                "avgReach": i.get("avgReach"),
+                "growth7": i.get("growth7"),
+                "growth30": i.get("growth30"),
+                "postsPerDay30": i.get("postsPerDay30"),
+                "engagementRate": i.get("engagementRate"),
+                "stability": i.get("stability"),
+                "fraudRisk": i.get("fraudRisk"),
+                "redFlags": i.get("redFlags", []),
+                "utilityScore": i.get("utilityScore"),
+                "utilityTier": i.get("utilityTier"),
+                "lang": i.get("lang"),
+                "cryptoRelevanceScore": i.get("cryptoRelevanceScore"),
+                "lastPostAt": i.get("lastPostAt").isoformat() if i.get("lastPostAt") else None,
+                "lifecycle": i.get("lifecycle"),
+            }
+            for i in items
+        ],
+        "stats": {
+            "trackedChannels": stats_row.get("tracked", 0),
+            "avgUtility": round(stats_row.get("avgUtility", 0) or 0, 1),
+            "avgGrowth7": round((stats_row.get("avgGrowth7", 0) or 0) * 100, 1),
+            "highFraud": stats_row.get("highFraud", 0),
+            "highUtility": stats_row.get("highUtility", 0),
+        }
+    }
+
 # Include routers
 app.include_router(api_router)
 app.include_router(telegram_router)
