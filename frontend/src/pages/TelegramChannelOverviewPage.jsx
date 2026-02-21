@@ -277,6 +277,13 @@ function TopMetricCard({ label, value, subtitle, subtitleColor, badge }) {
 }
 
 function ActivityOverviewCard({ data }) {
+  // Default values if data is incomplete  
+  const postsPerDay = data?.postsPerDay || 0;
+  const viewRateStability = data?.viewRateStability || 'Stable';
+  const viewRateValue = data?.viewRateValue || 70;
+  const forwardVolatility = data?.forwardVolatility || 'Low';
+  const forwardValue = data?.forwardValue || 30;
+  
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="activity-overview">
       <div className="flex items-center justify-between mb-4">
@@ -286,9 +293,9 @@ function ActivityOverviewCard({ data }) {
       <p className="text-xs text-gray-500 mb-4">Posting rhythm & engagement patterns.</p>
       
       <div className="space-y-4">
-        <MetricRow label="Posts/day" value={data.postsPerDay} />
-        <MetricRowProgress label="View-rate stability" value={data.viewRateStability} progress={data.viewRateValue} />
-        <MetricRowProgress label="Forward volatility" value={data.forwardVolatility} progress={data.forwardValue} />
+        <MetricRow label="Posts/day" value={postsPerDay} />
+        <MetricRowProgress label="View-rate stability" value={viewRateStability} progress={viewRateValue} />
+        <MetricRowProgress label="Forward volatility" value={forwardVolatility} progress={forwardValue} />
       </div>
     </div>
   );
