@@ -743,8 +743,8 @@ async def add_to_watchlist(request: Request):
 async def remove_from_watchlist(username: str):
     """Remove channel from watchlist"""
     clean = username.lower().replace("@", "")
-    await db.tg_watchlist.delete_one({"username": clean})
-    return {"ok": True}
+    result = await db.tg_watchlist.delete_one({"username": clean})
+    return {"ok": True, "deleted": result.deleted_count > 0, "username": clean}
 
 @telegram_router.get("/watchlist/check/{username}")
 async def check_watchlist(username: str):
