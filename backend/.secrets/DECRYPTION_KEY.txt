@@ -1,0 +1,4 @@
+DECRYPTION_KEY=YtYLlxQ1XgP-Sy1cxXnWmwhXJOMP5HYbxVXEQ_FbzvU=
+
+# Для расшифровки используйте:
+# python3 -c "from cryptography.fernet import Fernet; f=Fernet(b'KEY'); print(f.decrypt(open('/app/backend/.secrets/tg_credentials.enc','rb').read()).decode())"
