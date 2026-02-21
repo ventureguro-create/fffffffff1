@@ -370,6 +370,12 @@ function ProductOverviewCard({ data }) {
 }
 
 function AISummaryCard({ data }) {
+  // Default values if data is incomplete
+  const text = data?.text || data?.summary || 'AI analysis is being generated...';
+  const spamLevel = data?.spamLevel || 'Low';
+  const signalNoise = data?.signalNoise || 8;
+  const contentExposure = data?.contentExposure || ['Crypto', 'News', 'Analysis'];
+  
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5" data-testid="ai-summary">
       <div className="flex items-center justify-between mb-4">
@@ -378,20 +384,20 @@ function AISummaryCard({ data }) {
       </div>
       
       <p className="text-sm text-gray-600 leading-relaxed mb-4">
-        {data.text} <span className="text-teal-600 cursor-pointer">See More</span>
+        {text} <span className="text-teal-600 cursor-pointer">See More</span>
       </p>
       
       <div className="flex flex-wrap gap-2 mb-4">
         <span className="px-2 py-1 bg-teal-50 text-teal-700 text-xs rounded">
-          Spam level: {data.spamLevel}
+          Spam level: {spamLevel}
         </span>
         <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-          Signal/noise: {data.signalNoise}/10
+          Signal/noise: {signalNoise}/10
         </span>
       </div>
       
       <div className="text-xs text-gray-500">
-        Content exposure: {data.contentExposure.join(', ')}
+        Content exposure: {Array.isArray(contentExposure) ? contentExposure.join(', ') : contentExposure}
       </div>
     </div>
   );
