@@ -17,56 +17,48 @@ async def ensure_indexes():
     
     print("[DB] Creating indexes...")
     
-    # Channel States (ingestion pipeline)
-    await db.tg_channel_states.create_index([("username", 1)], unique=True)
-    await db.tg_channel_states.create_index([
-        ("stage", 1), ("nextAllowedAt", 1), ("priority", 1), ("lastIngestAt", 1)
-    ])
-    await db.tg_channel_states.create_index([("stage", 1), ("lastCensusAt", 1)])
-    
-    # Resolve Cache
-    await db.tg_resolve_cache.create_index([("username", 1)], unique=True)
-    await db.tg_resolve_cache.create_index([("expiresAt", 1)], expireAfterSeconds=0)
-    
-    # Flood Events (rolling 1h)
-    await db.tg_flood_events.create_index([("ts", 1)], name="ts_1", expireAfterSeconds=3600)
-    
-    # Posts
-    await db.tg_posts.create_index([("channelUsername", 1), ("messageId", 1)], unique=True)
-    await db.tg_posts.create_index([("channelUsername", 1), ("date", -1)])
-    await db.tg_posts.create_index([("date", -1)])
-    
-    # Channels (UI queries)
-    await db.tg_channels.create_index([("username", 1)], unique=True)
-    await db.tg_channels.create_index([("utilityScore", -1)])
-    await db.tg_channels.create_index([("fraudRisk", 1)])
-    await db.tg_channels.create_index([("members", -1)])
-    await db.tg_channels.create_index([("avgReach", -1)])
-    await db.tg_channels.create_index([("growth7", -1)])
-    await db.tg_channels.create_index([("postsPerDay30", -1)])
-    await db.tg_channels.create_index([("lang", 1)])
-    await db.tg_channels.create_index([("cryptoRelevanceScore", -1)])
-    await db.tg_channels.create_index([("lastPostAt", -1)])
-    
-    # Discovery Edges
-    await db.tg_discovery_edges.create_index([
-        ("foundUsername", 1), ("sourceUsername", 1), ("method", 1)
-    ], unique=True)
-    await db.tg_discovery_edges.create_index([("createdAt", -1)])
-    
-    # Blacklist (TTL)
-    await db.tg_candidate_blacklist.create_index([("username", 1)], unique=True)
-    await db.tg_candidate_blacklist.create_index([("expiresAt", 1)], expireAfterSeconds=0)
-    
-    # Watchlist
-    await db.tg_watchlist.create_index([("username", 1)], unique=True)
-    
-    # Score Snapshots
-    await db.tg_score_snapshots.create_index([("username", 1), ("date", -1)])
-    
-    print("[DB] Indexes created successfully!")
-    
-    client.close()
+    try:
+        # Channel States (ingestion pipeline)
+        await db.tg_channel_states.create_index("username", unique=True, background=True)
+        await db.tg_channel_states.create_index([
+            ("stage", 1), ("nextAllowedAt", 1), ("priority", 1)
+        ], background=True)
+        
+        # Posts
+        await db.tg_posts.create_index([("channelUsername", 1), ("messageId", 1)], unique=True, background=True)
+        await db.tg_posts.create_index([("channelUsername", 1), ("date", -1)], background=True)
+        await db.tg_posts.create_index("date", background=True)
+        
+        # Channels (UI queries)
+        await db.tg_channels.create_index("username", unique=True, background=True)
+        await db.tg_channels.create_index("utilityScore", background=True)
+        await db.tg_channels.create_index("members", background=True)
+        await db.tg_channels.create_index("avgReach", background=True)
+        await db.tg_channels.create_index("growth7", background=True)
+        await db.tg_channels.create_index("lang", background=True)
+        await db.tg_channels.create_index("lastPostAt", background=True)
+        
+        # Discovery Edges
+        await db.tg_discovery_edges.create_index([
+            ("foundUsername", 1), ("sourceUsername", 1), ("method", 1)
+        ], unique=True, background=True)
+        await db.tg_discovery_edges.create_index("createdAt", background=True)
+        
+        # Blacklist
+        await db.tg_candidate_blacklist.create_index("username", unique=True, background=True)
+        
+        # Watchlist
+        await db.tg_watchlist.create_index("username", unique=True, background=True)
+        
+        # Score Snapshots
+        await db.tg_score_snapshots.create_index([("username", 1), ("date", -1)], background=True)
+        
+        print("[DB] Indexes created successfully!")
+        
+    except Exception as e:
+        print(f"[DB] Index creation warning: {e}")
+    finally:
+        client.close()
 
 
 if __name__ == "__main__":
