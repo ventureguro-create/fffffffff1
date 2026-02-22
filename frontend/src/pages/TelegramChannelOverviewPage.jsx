@@ -792,7 +792,15 @@ function CompareModal({ channel1, onClose }) {
 }
 
 function CompareColumn({ channel, compareWith, isLeft }) {
-  const { profile, topCards, aiSummary, activityOverview, audienceSnapshot, channelSnapshot, healthSafety, productOverview } = channel;
+  // Safe access with defaults
+  const profile = channel?.profile || {};
+  const topCards = channel?.topCards || {};
+  const aiSummary = channel?.aiSummary || {};
+  const activityOverview = channel?.activityOverview || {};
+  const audienceSnapshot = channel?.audienceSnapshot || {};
+  const channelSnapshot = channel?.channelSnapshot || {};
+  const healthSafety = channel?.healthSafety || {};
+  const productOverview = channel?.productOverview || {};
   
   // Calculate diff
   const getDiff = (val1, val2) => {
@@ -810,22 +818,22 @@ function CompareColumn({ channel, compareWith, isLeft }) {
       <div className="flex items-center gap-3">
         <div 
           className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-          style={{ backgroundColor: profile.avatarColor }}
+          style={{ backgroundColor: profile.avatarColor || '#666' }}
         >
-          {profile.title.substring(0, 2).toUpperCase()}
+          {(profile.title || 'CH').substring(0, 2).toUpperCase()}
         </div>
         <div>
-          <div className="font-semibold">{profile.title}</div>
-          <div className="text-sm text-teal-600">{profile.type}</div>
+          <div className="font-semibold">{profile.title || 'Unknown'}</div>
+          <div className="text-sm text-teal-600">{profile.type || 'Channel'}</div>
         </div>
       </div>
       
       {/* Basics */}
       <CompareSection title="Basics">
-        <MetricRow label="Members" value={topCards.subscribers.toLocaleString()} />
-        <div className="text-xs text-teal-600 text-right mb-2">{topCards.subscribersChange}</div>
-        <MetricRow label="Views/Post" value={topCards.viewsPerPost.toLocaleString()} />
-        <MetricRow label="Messages/Day" value={topCards.messagesPerDay} />
+        <MetricRow label="Members" value={(topCards.subscribers || 0).toLocaleString()} />
+        <div className="text-xs text-teal-600 text-right mb-2">{topCards.subscribersChange || ''}</div>
+        <MetricRow label="Views/Post" value={(topCards.viewsPerPost || 0).toLocaleString()} />
+        <MetricRow label="Messages/Day" value={topCards.messagesPerDay || '—'} />
         <div className="flex items-center justify-between mt-2">
           <span className="text-sm text-gray-600">Activity</span>
           <ActivityBadgeSmall level={topCards.activity} />
