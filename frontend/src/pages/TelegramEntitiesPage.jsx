@@ -15,6 +15,7 @@ import {
   Loader2
 } from 'lucide-react';
 import TelegramFilterDrawer from '../components/telegram/TelegramFilterDrawer';
+import { Sparkline } from '../modules/telegram/components/Sparkline';
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
