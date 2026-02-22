@@ -147,6 +147,17 @@ def classify_lifecycle(metrics: dict) -> str:
         return "MATURE"
     return "STABLE"
 
+def generate_sparkline_data(base_value: float, growth: float, points: int = 7) -> list:
+    """Generate sparkline data points based on trend"""
+    data = []
+    current = base_value * (1 - growth / 100 * 0.7)  # Start lower if positive growth
+    step = (base_value - current) / (points - 1) if points > 1 else 0
+    for i in range(points):
+        noise = random.uniform(-2, 2)
+        data.append(round(current + noise, 1))
+        current += step
+    return data
+
 def generate_mock_channel(username: str, index: int = 0) -> dict:
     """Generate mock channel data"""
     random.seed(hash(username))
@@ -166,6 +177,9 @@ def generate_mock_channel(username: str, index: int = 0) -> dict:
         'utilityScore': base_score,
         'stability': stability
     }
+    
+    # Generate sparkline data for trend visualization
+    sparkline = generate_sparkline_data(base_score, growth7, 7)
     
     return {
         'username': username,
@@ -188,6 +202,7 @@ def generate_mock_channel(username: str, index: int = 0) -> dict:
         'fraudRisk': fraud_risk,
         'stability': stability,
         'postsPerDay': posts_per_day,
+        'sparkline': sparkline,
         'updatedAt': datetime.now(timezone.utc).isoformat(),
     }
 
