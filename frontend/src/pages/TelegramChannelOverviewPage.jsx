@@ -843,40 +843,40 @@ function CompareColumn({ channel, compareWith, isLeft }) {
       {/* AI Summary */}
       <CompareSection title="AI Summary">
         <MetricRow label="Spam level" value={<ActivityBadgeSmall level={aiSummary.spamLevel === 'Low' ? 'Low' : 'Medium'} />} />
-        <MetricRow label="Signal/noise" value={`${aiSummary.signalNoise}/10`} />
+        <MetricRow label="Signal/noise" value={`${aiSummary.signalNoise || 0}/10`} />
         <div className="text-xs text-gray-500 mt-2">
-          Content exposure: {aiSummary.contentExposure.join(', ')}
+          Content exposure: {Array.isArray(aiSummary.contentExposure) ? aiSummary.contentExposure.join(', ') : '—'}
         </div>
       </CompareSection>
       
       {/* Activity Overview */}
       <CompareSection title="Activity Overview">
-        <MetricRow label="Posts/Day" value={activityOverview.postsPerDay} />
-        <MetricRowProgress label="View-rate stability" value={activityOverview.viewRateStability} progress={activityOverview.viewRateValue} />
-        <MetricRowProgress label="Forward volatility" value={activityOverview.forwardVolatility} progress={activityOverview.forwardValue} />
+        <MetricRow label="Posts/Day" value={activityOverview.postsPerDay || '—'} />
+        <MetricRowProgress label="View-rate stability" value={activityOverview.viewRateStability || 'N/A'} progress={activityOverview.viewRateValue || 0} />
+        <MetricRowProgress label="Forward volatility" value={activityOverview.forwardVolatility || 'N/A'} progress={activityOverview.forwardValue || 0} />
       </CompareSection>
       
       {/* Audience Snapshot */}
       <CompareSection title="Audience Snapshot">
-        <MetricRow label="Direct channel followers" value={`${audienceSnapshot.directFollowers}%`} />
-        <MetricRow label="Cross-post traffic (other groups/channels)" value={`${audienceSnapshot.crossPost}%`} />
-        <MetricRow label="Search & hashtags" value={`${audienceSnapshot.searchHashtags}%`} />
-        <MetricRow label="External shares" value={`${audienceSnapshot.externalShares}%`} />
+        <MetricRow label="Direct channel followers" value={`${audienceSnapshot.directFollowers || 0}%`} />
+        <MetricRow label="Cross-post traffic (other groups/channels)" value={`${audienceSnapshot.crossPost || 0}%`} />
+        <MetricRow label="Search & hashtags" value={`${audienceSnapshot.searchHashtags || 0}%`} />
+        <MetricRow label="External shares" value={`${audienceSnapshot.externalShares || 0}%`} />
       </CompareSection>
       
       {/* Channel Snapshot */}
       <CompareSection title="Channel Snapshot">
-        <MetricRow label="Online now" value={channelSnapshot.onlineNow} />
-        <MetricRow label="24h peak online" value={channelSnapshot.peak24h.toLocaleString()} />
-        <MetricRow label="Active senders (24h)" value={channelSnapshot.activeSenders} />
-        <MetricRow label="Retention (7d returning viewers)" value={`${channelSnapshot.retention7d}%`} />
+        <MetricRow label="Online now" value={channelSnapshot.onlineNow || 0} />
+        <MetricRow label="24h peak online" value={(channelSnapshot.peak24h || 0).toLocaleString()} />
+        <MetricRow label="Active senders (24h)" value={channelSnapshot.activeSenders || 0} />
+        <MetricRow label="Retention (7d returning viewers)" value={`${channelSnapshot.retention7d || 0}%`} />
       </CompareSection>
       
       {/* Health & Safety */}
       <CompareSection title="Health & Safety">
-        <MetricRowProgress label="Spam Level" value={healthSafety.spamLevel.label} progress={healthSafety.spamLevel.value} />
-        <MetricRowProgress label="Raid risk" value={healthSafety.raidRisk.label} progress={healthSafety.raidRisk.value} color="amber" />
-        <MetricRowProgress label="Mod coverage" value={healthSafety.modCoverage.label} progress={healthSafety.modCoverage.value} />
+        <MetricRowProgress label="Spam Level" value={healthSafety.spamLevel?.label || 'N/A'} progress={healthSafety.spamLevel?.value || 0} />
+        <MetricRowProgress label="Raid risk" value={healthSafety.raidRisk?.label || 'N/A'} progress={healthSafety.raidRisk?.value || 0} color="amber" />
+        <MetricRowProgress label="Mod coverage" value={healthSafety.modCoverage?.label || 'N/A'} progress={healthSafety.modCoverage?.value || 0} />
       </CompareSection>
       
       {/* Product Overview */}
@@ -884,10 +884,10 @@ function CompareColumn({ channel, compareWith, isLeft }) {
         <div className="flex items-center gap-1 mb-2">
           {[1,2,3,4].map(i => <Star key={i} className="w-3 h-3 text-amber-400 fill-amber-400" />)}
           <Star className="w-3 h-3 text-gray-300" />
-          <span className="text-sm font-medium ml-1">{productOverview.rating}/5</span>
+          <span className="text-sm font-medium ml-1">{productOverview.rating || 4}/5</span>
         </div>
         <div className="flex flex-wrap gap-1 mb-2">
-          {productOverview.tags.map(tag => (
+          {(productOverview.tags || []).map(tag => (
             <span key={tag} className="px-2 py-0.5 bg-teal-50 text-teal-700 text-xs rounded">
               {tag}
             </span>
