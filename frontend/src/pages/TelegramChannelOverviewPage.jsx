@@ -492,13 +492,20 @@ function RelatedChannelsCard({ channels }) {
   );
 }
 
-function EngagementTimelineCard({ data, timeRange, onTimeRangeChange }) {
-  const maxViews = Math.max(...data.map(d => d.views));
+function EngagementTimelineCard({ data, timeRange, onTimeRangeChange, metrics }) {
+  // Transform timeline data for ChannelChart
+  const chartRows = (data || []).slice(0, timeRange === '24H' ? 24 : timeRange === '7D' ? 7 : timeRange === '30D' ? 30 : 90).map(d => ({
+    date: d.date,
+    utility: metrics?.utilityScore || 70,
+    reach: d.views || 0,
+    growth7: metrics?.growth7 || 0,
+    fraud: metrics?.fraud || 0.2,
+  }));
   
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6" data-testid="engagement-timeline">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Engagement Timeline</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Performance Timeline</h3>
         <div className="flex items-center gap-2">
           {['24H', '7D', '30D', '90D'].map(range => (
             <button
@@ -519,31 +526,25 @@ function EngagementTimelineCard({ data, timeRange, onTimeRangeChange }) {
       {/* Legend */}
       <div className="flex items-center gap-4 mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-teal-500" />
-          <span className="text-xs text-gray-600">Views</span>
+          <div className="w-3 h-3 rounded-full bg-gray-900" />
+          <span className="text-xs text-gray-600">Utility Score</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-blue-500" />
-          <span className="text-xs text-gray-600">Reactions</span>
+          <div className="w-3 h-3 rounded-full bg-gray-400" />
+          <span className="text-xs text-gray-600">Avg Reach</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-amber-500" />
-          <span className="text-xs text-gray-600">Joins</span>
+          <div className="w-3 h-3 rounded-full bg-gray-600" />
+          <span className="text-xs text-gray-600">Growth 7D</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-1.5 bg-gray-500" style={{ borderStyle: 'dashed' }} />
+          <span className="text-xs text-gray-600">Fraud Risk</span>
         </div>
       </div>
       
-      {/* Simple Chart */}
-      <div className="h-48 flex items-end gap-4">
-        {data.map((d, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center gap-2">
-            <div 
-              className="w-full bg-teal-500 rounded-t"
-              style={{ height: `${(d.views / maxViews) * 100}%`, minHeight: 4 }}
-            />
-            <span className="text-xs text-gray-500">{d.time}</span>
-          </div>
-        ))}
-      </div>
+      {/* Recharts powered chart */}
+      <ChannelChart rows={chartRows} />
     </div>
   );
 }
