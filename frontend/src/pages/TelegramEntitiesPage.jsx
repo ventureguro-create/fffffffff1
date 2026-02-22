@@ -207,6 +207,9 @@ export default function TelegramEntitiesPage() {
                   <th className="text-right px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Avg Reach
                   </th>
+                  <th className="text-center px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                    Trend
+                  </th>
                   <th className="text-right px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Growth (7D)
                   </th>
@@ -224,7 +227,7 @@ export default function TelegramEntitiesPage() {
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                       No entities found matching your filters.
                     </td>
                   </tr>
