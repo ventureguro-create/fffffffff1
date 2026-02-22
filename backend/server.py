@@ -402,6 +402,10 @@ async def get_utility_list(
                 
                 members = state.get("participantsCount") or int(utility_score * 500 + 5000)
                 
+                # Generate sparkline for trend visualization
+                random.seed(hash(snap["_id"]))
+                sparkline = generate_sparkline_data(utility_score, growth7_val, 7)
+                
                 items.append({
                     "username": snap["_id"],
                     "title": state.get("title") or format_title(snap["_id"]),
@@ -427,6 +431,7 @@ async def get_utility_list(
                     }),
                     "fraudRisk": fraud_risk,
                     "stability": stability_val,
+                    "sparkline": sparkline,
                     "updatedAt": snap.get("date", datetime.now(timezone.utc)).isoformat() if isinstance(snap.get("date"), datetime) else str(snap.get("date", "")),
                 })
         else:
