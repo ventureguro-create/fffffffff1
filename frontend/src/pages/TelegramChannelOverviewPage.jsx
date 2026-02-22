@@ -150,6 +150,7 @@ export default function TelegramChannelOverviewPage() {
               data={channel.timeline} 
               timeRange={timeRange}
               onTimeRangeChange={setTimeRange}
+              metrics={channel.metrics}
             />
 
             {/* Recent Posts */}
