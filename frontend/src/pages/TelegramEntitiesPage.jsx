@@ -231,32 +231,29 @@ export default function TelegramEntitiesPage() {
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden" data-testid="entities-table">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <tr className="border-b border-gray-100 bg-gray-50/50">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Channel/Group
                   </th>
-                  <th className="text-left px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Type
                   </th>
-                  <th className="text-right px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Members
                   </th>
-                  <th className="text-right px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Avg Reach
                   </th>
-                  <th className="text-center px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                    Trend
-                  </th>
-                  <th className="text-right px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Growth (7D)
                   </th>
-                  <th className="text-center px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Activity
                   </th>
-                  <th className="text-center px-4 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Red Flags
                   </th>
-                  <th className="text-right px-6 py-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     FOMO Score
                   </th>
                 </tr>
@@ -264,7 +261,7 @@ export default function TelegramEntitiesPage() {
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                       No entities found matching your filters.
                     </td>
                   </tr>
