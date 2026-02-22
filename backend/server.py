@@ -1414,6 +1414,166 @@ async def get_utility_list_v2(
         }
     }
 
+# ====================== MTProto Live Fetch Routes ======================
+
+@telegram_router.get("/admin/mtproto/status")
+async def mtproto_status():
+    """
+    Check MTProto client status
+    GET /api/telegram-intel/admin/mtproto/status
+    """
+    if not MTPROTO_AVAILABLE:
+        return {
+            "ok": False,
+            "available": False,
+            "message": "MTProto client not installed"
+        }
+    
+    try:
+        client = get_mtproto_client()
+        connected = await client.is_connected()
+        
+        return {
+            "ok": True,
+            "available": True,
+            "connected": connected,
+            "secretsLoaded": SECRETS is not None
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "available": True,
+            "connected": False,
+            "error": str(e)
+        }
+
+@telegram_router.post("/admin/mtproto/connect")
+async def mtproto_connect():
+    """
+    Connect MTProto client
+    POST /api/telegram-intel/admin/mtproto/connect
+    """
+    if not MTPROTO_AVAILABLE:
+        return {"ok": False, "error": "MTProto not available"}
+    
+    try:
+        client = get_mtproto_client()
+        success = await client.connect()
+        
+        if success:
+            return {"ok": True, "status": "connected"}
+        else:
+            return {
+                "ok": False, 
+                "status": "not_authorized",
+                "message": "Run auth_telegram.py to authorize"
+            }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@telegram_router.get("/admin/mtproto/fetch/{username}")
+async def mtproto_fetch_channel(username: str):
+    """
+    Fetch live channel data via MTProto
+    GET /api/telegram-intel/admin/mtproto/fetch/:username
+    """
+    if not MTPROTO_AVAILABLE:
+        return {"ok": False, "error": "MTProto not available"}
+    
+    try:
+        async with MTProtoConnection() as client:
+            info = await client.get_channel_info(username)
+            
+            if info and 'error' not in info:
+                # Save to database
+                now = datetime.now(timezone.utc)
+                await db.tg_channel_states.update_one(
+                    {"username": info['username']},
+                    {
+                        "$set": {
+                            "username": info['username'],
+                            "title": info['title'],
+                            "about": info.get('about', ''),
+                            "participantsCount": info['participantsCount'],
+                            "isChannel": info['isChannel'],
+                            "lastMtprotoFetch": now,
+                            "updatedAt": now,
+                        },
+                        "$setOnInsert": {"createdAt": now, "stage": "QUALIFIED"}
+                    },
+                    upsert=True
+                )
+                
+                return {
+                    "ok": True,
+                    "source": "mtproto",
+                    "data": info,
+                    "savedToDb": True
+                }
+            
+            return {"ok": False, "data": info}
+            
+    except Exception as e:
+        logger.error(f"MTProto fetch error: {e}")
+        return {"ok": False, "error": str(e)}
+
+@telegram_router.get("/admin/mtproto/messages/{username}")
+async def mtproto_fetch_messages(username: str, limit: int = 50):
+    """
+    Fetch channel messages via MTProto
+    GET /api/telegram-intel/admin/mtproto/messages/:username
+    """
+    if not MTPROTO_AVAILABLE:
+        return {"ok": False, "error": "MTProto not available"}
+    
+    try:
+        async with MTProtoConnection() as client:
+            messages = await client.get_channel_messages(username, limit=limit)
+            
+            if messages:
+                # Save posts to database
+                now = datetime.now(timezone.utc)
+                clean_username = username.lower().replace('@', '')
+                
+                saved_count = 0
+                for msg in messages:
+                    result = await db.tg_posts.update_one(
+                        {
+                            "username": clean_username,
+                            "messageId": msg['messageId']
+                        },
+                        {
+                            "$set": {
+                                "username": clean_username,
+                                "messageId": msg['messageId'],
+                                "date": msg['date'],
+                                "text": msg['text'][:1000] if msg['text'] else '',
+                                "views": msg['views'],
+                                "forwards": msg['forwards'],
+                                "replies": msg['replies'],
+                                "hasMedia": msg['hasMedia'],
+                                "fetchedAt": now,
+                            }
+                        },
+                        upsert=True
+                    )
+                    if result.upserted_id:
+                        saved_count += 1
+                
+                return {
+                    "ok": True,
+                    "source": "mtproto",
+                    "count": len(messages),
+                    "savedNew": saved_count,
+                    "messages": messages[:10]  # Return first 10 for preview
+                }
+            
+            return {"ok": False, "error": "No messages returned"}
+            
+    except Exception as e:
+        logger.error(f"MTProto messages error: {e}")
+        return {"ok": False, "error": str(e)}
+
 # Include routers
 app.include_router(api_router)
 app.include_router(telegram_router)
