@@ -999,6 +999,14 @@ except ImportError as e:
     TG_MODULES_LOADED = False
     def normalize_username(x): return str(x or '').lower().replace('@', '')
 
+# Import MTProto client
+try:
+    from telegram_lite.mtproto_client import get_mtproto_client, MTProtoConnection
+    MTPROTO_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"MTProto client not available: {e}")
+    MTPROTO_AVAILABLE = False
+
 @telegram_router.post("/admin/seeds/import")
 async def admin_import_seeds(request: Request):
     """
