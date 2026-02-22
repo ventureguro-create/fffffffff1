@@ -350,6 +350,17 @@ function EntityRow({ entity }) {
         {formatNumber(entity.avgReach)}
       </td>
 
+      {/* Trend Sparkline */}
+      <td className="px-4 py-4">
+        <div className="w-20 h-6">
+          <Sparkline 
+            data={entity.sparkline || []} 
+            height={24} 
+            color={entity.growth7 >= 0 ? '#10b981' : '#ef4444'} 
+          />
+        </div>
+      </td>
+
       {/* Growth (7D) */}
       <td className={`px-4 py-4 text-sm text-right font-medium ${
         entity.growth7 >= 0 ? 'text-emerald-600' : 'text-red-500'
