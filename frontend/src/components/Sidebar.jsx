@@ -80,59 +80,7 @@ export function Sidebar({ globalState }) {
 
         {/* Main Navigation */}
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => {
-            // Group item with children
-            if (item.children) {
-              const isExpanded = expandedGroups.includes(item.id);
-              const hasActiveChild = isGroupActive(item.children);
-              
-              return (
-              <div key={item.id}>
-                {/* Group header */}
-                <button
-                  onClick={() => toggleGroup(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
-                    hasActiveChild
-                      ? 'bg-gray-800 text-white font-medium'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span>{item.icon}</span>
-                    <span>{item.label}</span>
-                  </div>
-                  {isExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-gray-500" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-500" />
-                  )}
-                </button>
-                
-                {/* Children */}
-                {isExpanded && (
-                  <div className="ml-4 mt-1 space-y-1 border-l border-gray-700 pl-2">
-                    {item.children.map((child) => (
-                      <Link
-                        key={child.path}
-                        to={child.path}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${
-                          isActive(child.path)
-                            ? 'bg-gray-800 text-white font-medium'
-                            : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                        }`}
-                      >
-                        <span className="text-xs">{child.icon}</span>
-                        <span>{child.label}</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          }
-          
-          // Regular item
-          return (
+          {navItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
@@ -143,13 +91,13 @@ export function Sidebar({ globalState }) {
                   ? 'bg-gray-800 text-white font-medium'
                   : 'text-gray-300 hover:bg-gray-800 hover:text-white'
               }`}
+              data-testid={`nav-${item.label.toLowerCase()}`}
             >
               <span>{item.icon}</span>
               <span>{item.label}</span>
             </Link>
-          );
-        })}
-      </nav>
+          ))}
+        </nav>
 
       {/* Connect Wallet Button */}
       <div className="p-4 border-t border-gray-800 mt-auto">
