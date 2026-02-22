@@ -3,64 +3,92 @@
 ## Project Overview
 **Telegram Market Intelligence Terminal** - изолированный модуль для анализа Telegram-каналов
 
-**Status:** Safe Ingestion Controls v1 Complete ✅
+**Status:** UI Integration + MTProto Module Complete ✅
 **Last Updated:** 2026-02-22
-**Version:** 1.1.0
+**Version:** 1.2.0
 
 ---
 
 ## What's Implemented
 
-### Backend - Safe Ingestion Controls (FastAPI Python)
+### Frontend (React) - P0 Complete ✅
+
+#### UI Components
+- ✅ **Sparkline Charts** - mini trend charts в таблице каналов
+- ✅ **ChannelChart** - полноценный recharts график на странице деталей
+- ✅ **FilterDrawer** - URL-driven фильтры с presets
+- ✅ **Quick Presets** - Fast Growing, High Reach Low Spam, Low Risk Stable, New Emerging
+- ✅ **Filter Fields** - Type, Activity Level, Members range, Reach range, Growth range, Red Flags, Sort
+- ✅ **Compare Modal** - сравнение двух каналов (исправлен баг с null safety)
+
+#### Pages
+- ✅ `/telegram` - Entities Overview с sparkline trends
+- ✅ `/telegram/:username` - Channel Overview с Performance Timeline chart
+- ✅ AppLayout с Sidebar и TopBar (оригинальный дизайн FOMO)
+
+#### Libraries
+- ✅ `recharts` - для Sparkline и ChannelChart компонентов
+
+### Backend (FastAPI Python) - Complete ✅
 
 #### Core Modules (`/app/backend/telegram-lite/`)
 - ✅ `policy.py` - Конфигурация ingestion (rps, flood thresholds, min subscribers, lang gate)
-- ✅ `safe_mode.py` - SAFE MODE система: flood counters, автоматическая активация при 3 FLOOD_WAIT > 300s
-- ✅ `scheduler.py` - SafeScheduler: очередь каналов по stage/priority, cadence по приоритетам
-- ✅ `lang_crypto.py` - RU/UA Language Gate + Crypto Relevance Scoring (keywords + $TICKER detection)
-- ✅ `members_proxy.py` - Proxy Members estimation когда participantsCount недоступен
-- ✅ `priority.py` - Top-Down scheduling: большие каналы первыми
+- ✅ `safe_mode.py` - SAFE MODE система: flood counters, автоматическая активация
+- ✅ `scheduler.py` - SafeScheduler: очередь каналов по stage/priority
+- ✅ `lang_crypto.py` - RU/UA Language Gate + Crypto Relevance Scoring
+- ✅ `members_proxy.py` - Proxy Members estimation
+- ✅ `priority.py` - Top-Down scheduling
 - ✅ `discovery.py` - Discovery Expansion: mentions + forwards → candidates
 - ✅ `seeds.py` - Seeds Import helper
 - ✅ `query_builder.py` - Filter API query builder
+- ✅ **`mtproto_client.py`** - Telethon MTProto клиент (P1)
 
-#### Admin Endpoints
+#### API Endpoints
+- ✅ `GET /api/telegram-intel/utility/list` - с sparkline данными
+- ✅ `GET /api/telegram-intel/channel/:username/overview` - с timeline для charts
 - ✅ `POST /api/telegram-intel/admin/seeds/import` - импорт seed usernames
-- ✅ `GET /api/telegram-intel/admin/census/summary` - распределение по stage + rejection breakdown
-- ✅ `GET /api/telegram-intel/admin/census/status` - очередь, safe mode, recent errors
-- ✅ `GET /api/telegram-intel/admin/census/lang-audit` - распределение по языку
-- ✅ `POST /api/telegram-intel/admin/channel/:username/kick` - force re-queue
-- ✅ `GET /api/telegram-intel/admin/channel/:username/members-audit` - members estimation audit
-- ✅ `POST /api/telegram-intel/admin/discovery/run` - run discovery from posts
-- ✅ `GET /api/telegram-intel/admin/discovery/recent` - recent discovery edges
-- ✅ `GET /api/telegram-intel/utility/list/v2` - Enhanced Filter API with full query support
+- ✅ `GET /api/telegram-intel/admin/census/summary` - распределение по stage
+- ✅ `GET /api/telegram-intel/admin/census/status` - очередь, safe mode
+- ✅ `GET /api/telegram-intel/admin/mtproto/status` - статус MTProto клиента
+- ✅ `POST /api/telegram-intel/admin/mtproto/connect` - подключение клиента
+- ✅ `GET /api/telegram-intel/admin/mtproto/fetch/:username` - live fetch канала
+- ✅ `GET /api/telegram-intel/admin/mtproto/messages/:username` - fetch сообщений
 
-### Ingestion Rules (Census)
-- ✅ **Min Subscribers**: 1000 (real OR proxy via medianViews × 4)
-- ✅ **Activity Freshness**: last post ≤ 180 days
-- ✅ **Language Gate**: RU/UK/mixed only
-- ✅ **Crypto Relevance**: score ≥ 0.08 (keywords + tickers)
+### MTProto Integration (P1) - Partial ✅
 
-### Stages
-- `CANDIDATE` - новый канал для проверки
-- `PENDING` - недостаточно данных, retry позже
-- `QUALIFIED` - прошёл все фильтры, готов к maintenance
-- `REJECTED` - отклонён (SMALL, INACTIVE, LANG, OFFTOPIC, ERROR)
+#### Installed
+- ✅ Telethon 1.42.0
+- ✅ cryptg (performance optimization)
+- ✅ MTProto client module с session management
+- ✅ Flood wait handling with exponential backoff
+- ✅ Channel info + messages fetching
 
-### Frontend (React)
-- ✅ AppLayout с Sidebar и TopBar (оригинальный дизайн FOMO)
-- ✅ `/telegram` - Entities Overview page
-- ✅ `/telegram/:username` - Channel Overview page  
-- ✅ TelegramFilterDrawer - URL-driven фильтры
+#### Pending
+- ⏳ **TG_API_ID required** - credentials содержат только TG_API_KEY (api_hash), нужен api_id
+- ⏳ Manual authorization (`python auth_telegram.py`)
 
 ### Data Storage (MongoDB)
 - ✅ `tg_channel_states` - состояние каналов + stage/priority/nextAllowedAt
 - ✅ `tg_channels` - UI data с метриками
 - ✅ `tg_posts` - посты каналов
+- ✅ `tg_score_snapshots` - snapshots метрик
 - ✅ `tg_discovery_edges` - provenance (как найден канал)
-- ✅ `tg_candidate_blacklist` - TTL blacklist
-- ✅ `tg_flood_events` - flood monitoring
-- ✅ `tg_runtime_state` - safe mode state
+- ✅ `tg_watchlist` - пользовательский watchlist
+
+---
+
+## Testing Results (2026-02-22)
+
+### Backend: 100% ✅
+- 31 тестов пройдено
+- Все API endpoints работают
+- Sparkline данные генерируются корректно
+
+### Frontend: 95% ✅
+- Таблица с трендами работает
+- Фильтры и presets работают
+- Channel detail page с графиком работает
+- Compare modal исправлен
 
 ---
 
@@ -69,53 +97,70 @@
 ### Encrypted Credentials
 - **File:** `/app/backend/.secrets/tg_credentials.enc`
 - **Key:** `/app/backend/.secrets/DECRYPTION_KEY.txt`
-- **DECRYPTION_KEY:** `YtYLlxQ1XgP-Sy1cxXnWmwhXJOMP5HYbxVXEQ_FbzvU=`
-
-```python
-from cryptography.fernet import Fernet
-f = Fernet(b'YtYLlxQ1XgP-Sy1cxXnWmwhXJOMP5HYbxVXEQ_FbzvU=')
-print(f.decrypt(open('/app/backend/.secrets/tg_credentials.enc','rb').read()).decode())
-```
-
----
-
-## ENV Configuration
-
-```bash
-# Ingestion Policy
-TG_RPS=1
-TG_FLOOD_SLEEP_THRESHOLD=120
-TG_HARD_FLOOD_BACKOFF_SEC=21600
-TG_SAFE_MODE_WINDOW_SEC=600
-TG_SAFE_MODE_COUNT=3
-TG_SAFE_MODE_MIN_WAIT_SEC=300
-TG_SAFE_MODE_DURATION_SEC=7200
-
-# Qualification Rules
-TG_MIN_SUBSCRIBERS=1000
-TG_MAX_INACTIVE_DAYS=180
-TG_LANG_ALLOW=ru,uk,mixed
-TG_CRYPTO_MIN_SCORE=0.08
-
-# Proxy Members
-TG_PROXY_MEMBERS_ENABLED=1
-TG_PROXY_MIN_MEDIAN_VIEWS=350
-TG_PROXY_MULTIPLIER=4.0
-```
+- **Contents:** TG_PHONE, TG_API_KEY (api_hash)
+- **Missing:** TG_API_ID (нужно для MTProto авторизации)
 
 ---
 
 ## Backlog / Next Steps
 
-### P0 (Critical) - In Progress
-- [ ] Maintenance Worker (cursor-based incremental ingest)
-- [ ] Connect to real MTProto runtime
+### P0 (Blocker) - User Action Required
+- [ ] **Предоставить TG_API_ID** для MTProto авторизации
+- [ ] Запустить `python auth_telegram.py` для авторизации
 
 ### P1 (High)
 - [ ] Cron jobs для автоматического обновления (12-24h)
-- [ ] Compare Modal UI
 - [ ] Watchlist кнопка на Channel Page
 
 ### P2 (Medium)
 - [ ] AI Summary с OpenAI GPT
 - [ ] Dark mode theme
+- [ ] Export to CSV
+
+### P3 (Low)
+- [ ] Compare multiple channels
+- [ ] Trend alerts / notifications
+
+---
+
+## Files Reference
+
+### Frontend
+- `/app/frontend/src/pages/TelegramEntitiesPage.jsx` - main list page
+- `/app/frontend/src/pages/TelegramChannelOverviewPage.jsx` - channel detail page
+- `/app/frontend/src/modules/telegram/components/Sparkline.jsx` - trend chart
+- `/app/frontend/src/modules/telegram/components/ChannelChart.jsx` - full chart
+- `/app/frontend/src/components/telegram/TelegramFilterDrawer.jsx` - filter UI
+
+### Backend
+- `/app/backend/server.py` - main API server
+- `/app/backend/telegram-lite/mtproto_client.py` - MTProto client
+- `/app/backend/auth_telegram.py` - one-time auth script
+
+---
+
+## Architecture
+
+```
+/app
+├── backend/
+│   ├── server.py                 # FastAPI server (1400+ lines)
+│   ├── auth_telegram.py          # Manual auth script
+│   ├── .secrets/                 # Encrypted credentials
+│   ├── .sessions/                # Telethon session files
+│   └── telegram-lite/            # Core modules
+│       ├── mtproto_client.py     # Telethon wrapper
+│       ├── policy.py
+│       ├── scheduler.py
+│       └── ... (other modules)
+└── frontend/
+    └── src/
+        ├── pages/
+        │   ├── TelegramEntitiesPage.jsx
+        │   └── TelegramChannelOverviewPage.jsx
+        ├── modules/telegram/components/
+        │   ├── Sparkline.jsx
+        │   └── ChannelChart.jsx
+        └── components/telegram/
+            └── TelegramFilterDrawer.jsx
+```
