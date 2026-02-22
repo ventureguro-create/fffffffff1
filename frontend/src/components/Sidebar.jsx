@@ -36,19 +36,11 @@ export function Sidebar({ globalState }) {
     );
   };
 
-  // Navigation items with groups support
+  // Navigation items - simple links only
   const navItems = [
     { path: '/', label: 'Dashboard', icon: '🏠' },
     { path: '/market', label: 'Market', icon: '📊' },
-    // Telegram group with children
-    { 
-      id: 'telegram',
-      label: 'Telegram', 
-      icon: '📱',
-      children: [
-        { path: '/telegram', label: 'Entities', icon: '🏢' },
-      ]
-    },
+    { path: '/telegram', label: 'Telegram', icon: '📱' },
     { path: '/tokens', label: 'Tokens', icon: '🪙' },
     { path: '/wallets', label: 'Wallets', icon: '👛' },
     { path: '/entities', label: 'Entities', icon: '🏢' },
