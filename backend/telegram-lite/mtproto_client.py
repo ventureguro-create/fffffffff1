@@ -80,6 +80,12 @@ class MTProtoClient:
             decrypted = fernet.decrypt(encrypted)
             
             credentials = json.loads(decrypted.decode())
+            
+            # Map alternative key names
+            # TG_API_KEY might be the api_hash
+            if 'TG_API_KEY' in credentials and 'TG_API_HASH' not in credentials:
+                credentials['TG_API_HASH'] = credentials['TG_API_KEY']
+            
             logger.info("Loaded encrypted Telegram credentials")
             return credentials
             
