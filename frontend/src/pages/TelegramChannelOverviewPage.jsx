@@ -479,12 +479,13 @@ function RelatedChannelsCard({ channels }) {
         <span className="text-xs text-gray-400 px-2 py-1 bg-gray-100 rounded">You might track next</span>
       </div>
       
-      <div className="space-y-3">
+      <div className="space-y-4">
         {channels.map((ch, i) => (
-          <div key={i} className="flex items-center justify-between">
-            <span className="text-sm text-gray-700">{ch.title}</span>
-            <span className="text-xs">
-              Activity: <ActivityBadgeSmall level={ch.activity} />
+          <div key={i} className="flex items-center justify-between py-1 border-b border-gray-50 last:border-0">
+            <span className="text-sm text-gray-700 font-medium">{ch.title}</span>
+            <span className="text-xs flex items-center gap-2">
+              <span className="text-gray-500">Activity:</span>
+              <ActivityBadgeSmall level={ch.activity} />
             </span>
           </div>
         ))}
