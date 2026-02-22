@@ -1,10 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Wallet, ChevronDown, ChevronRight, Menu, X } from 'lucide-react';
+import { Wallet, Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export function Sidebar({ globalState }) {
   const location = useLocation();
-  const [expandedGroups, setExpandedGroups] = useState(['telegram']); // Telegram expanded by default
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   // Close mobile sidebar on route change
@@ -22,19 +21,6 @@ export function Sidebar({ globalState }) {
   }, []);
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
-  
-  // Check if any child in group is active
-  const isGroupActive = (children) => {
-    return children?.some(child => location.pathname.startsWith(child.path));
-  };
-
-  const toggleGroup = (groupId) => {
-    setExpandedGroups(prev => 
-      prev.includes(groupId) 
-        ? prev.filter(id => id !== groupId)
-        : [...prev, groupId]
-    );
-  };
 
   // Navigation items - simple links only
   const navItems = [
