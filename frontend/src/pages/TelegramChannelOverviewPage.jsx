@@ -15,6 +15,7 @@ import {
   Loader2,
   RefreshCw
 } from 'lucide-react';
+import { ChannelChart } from '../modules/telegram/components/ChannelChart';
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
