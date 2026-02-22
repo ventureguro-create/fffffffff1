@@ -109,9 +109,9 @@ class MTProtoClient:
             logger.error("No credentials available for connection")
             return False
         
-        api_id = self._credentials.get('TG_API_ID') or self._credentials.get('api_id')
-        api_hash = self._credentials.get('TG_API_HASH') or self._credentials.get('api_hash')
-        phone = self._credentials.get('TG_PHONE') or self._credentials.get('phone')
+        api_id = self._credentials.get('TG_PHONE') or self._credentials.get('TG_API_ID') or self._credentials.get('api_id')
+        api_hash = self._credentials.get('TG_API_KEY') or self._credentials.get('TG_API_HASH') or self._credentials.get('api_hash')
+        phone = self._credentials.get('phone')  # Phone is separate, may need to ask user
         
         if not api_id or not api_hash:
             logger.error("Missing API ID or API Hash in credentials")
